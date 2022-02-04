@@ -1,0 +1,149 @@
+% Create a plots of significant wave height at all Wave Gauges (WGs) along
+% with a plot of the bathymetry for reference
+%
+%
+% BKN - USGS PCMSC 2021
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+clear
+close all
+
+%% Load the data
+%Define data paths
+workingDir = 'c:\Users\user\Documents\Models\Paper1_2DwaveFlume\Figures\';
+HRmodelDir = 'c:\Users\user\Documents\Models\Paper1_2DwaveFlume\DataAnalysis\HR_Domain\';
+LRmodelDir = 'c:\Users\user\Documents\Models\Paper1_2DwaveFlume\DataAnalysis\LR_Domain\';
+HRbathyDir = 'c:\Users\user\Documents\Models\Paper1_2DwaveFlume\ModelRuns\HR_Domain\Models\';
+LRbathyDir = 'c:\Users\user\Documents\Models\Paper1_2DwaveFlume\ModelRuns\LR_Domain\Models\';
+
+modelInfo = 'Models_allHR_LR.csv';
+
+%Load modelInfo from the CSV file and create a structure from the data
+fid = fopen([workingDir modelInfo]);
+header = textscan(fgetl(fid),repmat('%s',1,7),'delimiter',',');
+data = textscan(fid,repmat('%f',1,7),'delimiter',',');
+modelInfo = cell2struct(data,[header{:}],2);clear data
+
+ff = figure(1);
+set(ff,'PaperOrientation','landscape',...
+    'position',[100 80   550   450]);
+xProfiles = 37:0.5:40;
+cc = [0 57 255;0 219 218;219 167 0;255 3 3]./255;
+markers = {'o';'s';'d';'^';'p'};
+
+%% Load processed model data -- HR
+HRmodelFree = dir([HRmodelDir '*freeSurf_V2*']);
+HRmodelFree = HRmodelFree(~ismember({HRmodelFree.name},{'.','..'}));
+HRmodelFree = {HRmodelFree.name};
+
+disp('Loading HR models')
+%Loop through model scenarios and load the data into a structure
+HR.WGs = [31 65 66 67 68 69 70 71 72 73 74 75 76];
+for i = 1:length(modelInfo.scenarioNumber)
+    whichModel = string(modelInfo.scenarioNumber(i));
+    %Find model folders
+    scenarioNumber = regexp(HRmodelFree','(?<=_)(.*?)(?=_)','match');
+    scenarioNumber = cat(1, scenarioNumber{:});
+    modelID = find(strcmp(whichModel,scenarioNumber));
+    FS = load([HRmodelDir HRmodelFree{modelID}]);
+    Gauges = fieldnames(FS);
+    Tp = modelInfo.Tp(i);
+    h = modelInfo.h(i);
+    for j = 1:length(HR.WGs)
+        [WG2,f] = pwelch(FS.(Gauges{j}).eta,[],[],[],8);
+        HR.Hs(i,j) = 4*sqrt(sum(WG2.*mean(diff(f))));
+        HR.D(i,j) = 0;
+    end
+    HR.Tp(i) = Tp;
+    HR.h(i) = h;
+end
+
+hModel = unique(HR.h);
+TpModel = unique(HR.Tp);
+sp(1) = subplot(121);
+for i = 1:length(hModel)
+    hold on
+    %Organize plots by water depth!
+    modelID = find(HR.h == hModel(i));
+    HsNorm = mean(HR.Hs(modelID,2:end)./HR.Hs(modelID,1),2);
+    x = HR.Tp(modelID);
+    y = HsNorm;
+    %     xs = linspace(4,20,length(y));
+    
+    edges = linspace(0,24,6);
+    bins = discretize(x,edges);
+    [meanVal,maxVal,stDev] = grpstats(y,bins,{@mean, @max, @std});
+    xs = linspace(4,20,length(meanVal));
+    B = polyfit(xs,meanVal,3);
+    Yfit = polyval(B,xs);
+    plot(linspace(4,20,100),interp1(xs,Yfit,linspace(4,20,100),'spline'),'-.',...
+        'color',cc(i,:),'linewidth',1)
+    errorbar(TpModel,meanVal,stDev,...
+        sprintf('%s',markers{i}),'color',cc(i,:),...
+        'markerfacecolor',cc(i,:),'markersize',5,'linewidth',1);
+    %     B = polyfit(xs,y,3);
+    %     Yfit = polyval(B,xs);
+    %     plot(linspace(4,20,100),interp1(xs,Yfit,linspace(4,20,100),'spline'),'-.',...
+    %         'color',cc(i,:),'linewidth',1)
+    %     plot(x,y,sprintf('%s',markers{i}),'color',cc(i,:),...
+    %         'markerfacecolor',cc(i,:),'markersize',5,'linewidth',1);
+end
+
+%% Load processed model data -- LR
+LRmodelFree = dir([LRmodelDir '*freeSurf_V2*']);
+LRmodelFree = LRmodelFree(~ismember({LRmodelFree.name},{'.','..'}));
+LRmodelFree = {LRmodelFree.name};
+
+disp('Loading LR models')
+%Loop tLRough model scenarios and load the data into a structure
+LR.WGs = [31 65 66 67 68 69 70 71 72 73 74 75 76];
+for i = 1:length(modelInfo.scenarioNumber)
+    whichModel = string(modelInfo.scenarioNumber(i));
+    %Find model folders
+    scenarioNumber = regexp(LRmodelFree','(?<=_)(.*?)(?=_)','match');
+    scenarioNumber = cat(1, scenarioNumber{:});
+    modelID = find(strcmp(whichModel,scenarioNumber));
+    FS = load([LRmodelDir LRmodelFree{modelID}]);
+    Gauges = fieldnames(FS);
+    Tp = modelInfo.Tp(i);
+    h = modelInfo.h(i);
+    for j = 1:length(LR.WGs)
+        [WG2,f] = pwelch(FS.(Gauges{j}).eta,[],[],[],8);
+        LR.Hs(i,j) = 4*sqrt(sum(WG2.*mean(diff(f))));
+        LR.D(i,j) = 0;
+    end
+    LR.Tp(i) = Tp;
+    LR.h(i) = h;
+end
+
+sp(2) = subplot(122);
+for i = 1:length(hModel)
+    hold on
+    %Organize plots by water depth!
+    modelID = find(LR.h == hModel(i));
+    HsNorm = mean(LR.Hs(modelID,2:end)./LR.Hs(modelID,1),2);
+    x = LR.Tp(modelID);
+    y = HsNorm;
+    %     xs = linspace(4,20,length(y));
+    
+    edges = linspace(0,24,6);
+    bins = discretize(x,edges);
+    [meanVal,maxVal,stDev] = grpstats(y,bins,{@mean, @max, @std});
+    xs = linspace(4,20,length(meanVal));
+    B = polyfit(xs,meanVal,3);
+    Yfit = polyval(B,xs);
+    plot(linspace(4,20,100),interp1(xs,Yfit,linspace(4,20,100),'spline'),'-.',...
+        'color',cc(i,:),'linewidth',1)
+    errorbar(TpModel,meanVal,stDev,...
+        sprintf('%s',markers{i}),'color',cc(i,:),...
+        'markerfacecolor',cc(i,:),'markersize',5,'linewidth',1);
+    %     B = polyfit(xs,y,3);
+    %     Yfit = polyval(B,xs);
+    %     plot(linspace(4,20,100),interp1(xs,Yfit,linspace(4,20,100),'spline'),'-.',...
+    %         'color',cc(i,:),'linewidth',1)
+    %     plot(x,y,sprintf('%s',markers{i}),'color',cc(i,:),...
+    %         'markerfacecolor',cc(i,:),'markersize',5,'linewidth',1);
+end
+
+

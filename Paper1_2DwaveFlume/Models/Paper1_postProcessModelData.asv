@@ -1,0 +1,350 @@
+% Create reduced-size data files to simplify figure making. This script
+% loads modeled data from the \DataAnalysis folder for HR and LR models and
+% computes key variables (wave energy dissipation between the model inlet
+% and patch, D; total mean TKE dissipation rate (eps); wave breaking
+% parameter (lambda); wave steepness (steepness)). TKE dissipation rate is
+% binned (averaged) along the x-z axes into 100 bins to reduce storage
+% space. 
+%
+%
+% This is version 1 of this script.
+%
+% BKN - USGS PCMSC 2021
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+clear
+versionNO = 'allHR_LR_V5';
+
+%Define data paths
+workingDir = 'c:\Users\user\Documents\Models\Paper1_2DwaveFlume\Figures\';
+HRmodelDir = 'c:\Users\user\Documents\Models\Paper1_2DwaveFlume\DataAnalysis\HR_Domain\';
+LRmodelDir = 'c:\Users\user\Documents\Models\Paper1_2DwaveFlume\DataAnalysis\LR_Domain\';
+
+%Get modelNames from the model directory
+HRmodelRaw = dir([HRmodelDir '*rawData_V2*']);
+HRmodelRaw = HRmodelRaw(~ismember({HRmodelRaw.name},{'.','..'}));
+HRmodelRaw = {HRmodelRaw.name};
+
+HRmodelFree = dir([HRmodelDir '*freeSurf_V2*']);
+HRmodelFree = HRmodelFree(~ismember({HRmodelFree.name},{'.','..'}));
+HRmodelFree = {HRmodelFree.name};
+
+LRmodelRaw = dir([LRmodelDir '*rawData_V2*']);
+LRmodelRaw = LRmodelRaw(~ismember({LRmodelRaw.name},{'.','..'}));
+LRmodelRaw = {LRmodelRaw.name};
+
+LRmodelFree = dir([LRmodelDir '*freeSurf_V2*']);
+LRmodelFree = LRmodelFree(~ismember({LRmodelFree.name},{'.','..'}));
+LRmodelFree = {LRmodelFree.name};
+
+disp('Loading HR models')
+t1 = tic;
+%Load modelInfo from the CSV file and create a structure from the data
+modelNames = 'Models_allHR.csv';
+fid = fopen([workingDir modelNames]);
+header = textscan(fgetl(fid),repmat('%s',1,9),'delimiter',',');
+data = textscan(fid,repmat('%f',1,9),'delimiter',',');
+modelInfo = cell2struct(data,[header{:}],2);clear data
+%Loop through model scenarios and load the data into a structure
+data = struct();
+for i = 1:length(modelInfo.scenarioNumber)
+    whichModel = string(modelInfo.scenarioNumber(i));
+    %Find model folders
+    scenarioNumber = regexp(HRmodelFree','(?<=_)(.*?)(?=_)','match');
+    scenarioNumber = cat(1, scenarioNumber{:});
+    modelID = find(strcmp(whichModel,scenarioNumber));
+    fprintf('Loading file %0.0f of %0.0f: %s\n',i,length(modelInfo.scenarioNumber),HRmodelFree{modelID})
+    HR = load([HRmodelDir HRmodelRaw{modelID}]);
+    FS = load([HRmodelDir HRmodelFree{modelID}]);
+    
+    %Calculate wave energy dissipation @ WG1 and WG2 
+    [WG1,~] = pwelch(FS.WG1.eta,[],[],[],8);
+    [WG2,F] = pwelch(FS.WG9.eta,[],[],[],8);
+    
+    Tp = modelInfo.Tp(i);
+    Hs = modelInfo.Hs(i);
+    h = modelInfo.h(i);
+    k = wavek(F,h);
+    kh = k*h;
+    c = sqrt(9.81.*tanh(kh))./sqrt(k);
+    n = (1/2)*(1+((2*kh)./(sinh(2*kh))));
+    Cg = n.*c;
+    cutoff = find(F>=0.5,1,'last');
+    F1 = trapz(1025*9.81*WG1(2:cutoff).*Cg(2:cutoff));
+    F2 = trapz(1025*9.81*WG2(2:cutoff).*Cg(2:cutoff));
+    D = abs((F1-F2)/(73-31));
+    gamma = Hs/h;
+    lambda = (9.81.*(Tp.^2))./(2*pi);
+    steepness = Hs/lambda;
+    
+    %Average turbulence in time; use tStart and tStop to crop model data
+    %based on analysis of "good" timesteps (see
+    %Paper1_animateModelTimesteps.m)
+    if min(size(HR.epsilon.epsilon)) ~= length(HR.time) %some cases have epsilon shorter than U and time variables, catch these
+        times = HR.time(1:min(size(HR.epsilon.epsilon)));
+    else
+        times = HR.time;
+    end
+    timeID = find(times >= modelInfo.tStart(i) & times <= modelInfo.tStop(i));
+    epsAvg = mean(HR.epsilon.epsilon(:,timeID),2);
+    x = HR.epsilon.x(:,1)-30;
+    z = HR.epsilon.z(:,1);
+    
+    nBins = 100;
+    xBins = linspace(min(x),max(x),nBins);
+    zBins = linspace(min(z),max(z),nBins);
+    eBins = linspace(min(epsAvg),max(epsAvg),nBins);
+    
+    ix = discretize(x, xBins);
+    iz = discretize(z, zBins);
+    idx = sub2ind([nBins nBins], ix, iz);
+    epsg = accumarray(idx, epsAvg, [nBins*nBins 1], @(x) mean(x), NaN);
+    epsg = reshape(epsg, nBins, nBins);
+    
+    %Compute Umag and average in time
+    Umag = sqrt((HR.U.Ux.^2)+(HR.U.Uy.^2)+(HR.U.Uz.^2));
+    UmagAvg = mean(Umag(:,timeID),2);
+    Umagg = accumarray(idx, UmagAvg, [nBins*nBins 1], @(x) mean(x), NaN);
+    Umagg = reshape(Umagg, nBins, nBins);
+    
+    %Average TKE (k) in time
+    TKEavg = mean(HR.k.k(:,timeID),2);
+    TKEavgg = accumarray(idx, TKEavg, [nBins*nBins 1], @(x) mean(x), NaN);
+    TKEavgg = reshape(TKEavgg, nBins, nBins);
+    
+    %Compute mean oscillatory velocity Uw. Uw^3 should be proportional to 
+    %TKE dissipation from bottom friction if dissipation comes from bottom
+    %friction and not breaking
+    [m,n] = size(HR.U.x(:,timeID));
+    Uc = zeros(m,1);
+    Uwrms = zeros(m,1);
+    Wwrms = zeros(m,1);
+    Ubr = zeros(m,1);
+    Ux = HR.U.Ux(:,timeID);
+    Uy = HR.U.Uy(:,timeID);
+    Uz = HR.U.Uz(:,timeID);
+    for j = 1:m
+        Uxx = Ux(j,:);
+        Uyy = Uy(j,:);
+        Uzz = Uz(j,:);
+        [Cuu,F] = pwelch(Uxx,[],[],[],8);
+        [Cvv,~] = pwelch(Uyy,[],[],[],8);
+        Cuv = Cuu + Cvv;
+        df = F(3)-F(2);
+        ff = find(F>=0.03 & F<=1);
+        
+        % These are representative orbital velocities for w-c cacluations,
+        % according to Madsen (1994) Coastal Engineering 1994, Proc., 24th
+        % Intl. Conf., Coastal Eng. Res. Council / ASCE. pp.384-398.
+        % (esp. p. 395)
+        Ubr(j) = sqrt( 2*sum(Cuv(ff)*df));
+        
+        %Calculate RMS velocities (Luhar et al. 2013)
+        Ec = (1/n)*sum(Uxx);Nc = (1/n)*sum(Uyy);
+        Ewrms = sqrt((1/n)*sum((Uxx-Ec).^2));
+        Nwrms = sqrt((1/n)*sum((Uyy-Nc).^2));
+        Wc = (1/n)*sum(Uzz);
+        Wwrms(j) = sqrt((1/n)*sum((Uzz-Wc).^2));
+        Uc(j) = sqrt(Ec^2+Nc^2);
+        Uwrms(j) = sqrt(Ewrms^2+Nwrms^2);
+    end
+
+    
+    for j = 1:n
+        int = accumarray(idx, HR.U.Ux(:,timeID(j)), [nBins*nBins 1], @(x) mean(x), NaN);
+        Ux(:,:,j) = reshape(int, nBins, nBins);
+        int = accumarray(idx, HR.U.Uy(:,timeID(j)), [nBins*nBins 1], @(x) mean(x), NaN);
+        Uy(:,:,j) = reshape(int, nBins, nBins);
+        int = accumarray(idx, HR.U.Uz(:,timeID(j)), [nBins*nBins 1], @(x) mean(x), NaN);
+        Uz(:,:,j) = reshape(int, nBins, nBins);
+    end
+    %Calculate RMS velocities (Luhar et al. 2013)
+    %Compute wave orbital velocities (Ubr) for all data points. 
+    Ubr1 = zeros(nBins,nBins);
+    Uc1 = zeros(nBins,nBins);
+    Uwrms1 = zeros(nBins,nBins);
+    Wwrms1 = zeros(nBins,nBins);
+    for j = 1:nBins
+        for k = 1:nBins
+           Uxint =  squeeze(Ux(j,k,:));
+           Uyint =  squeeze(Uy(j,k,:));
+           Uzint =  squeeze(Uz(j,k,:));
+           if any(isnan(Uxint) | isnan(Uyint) | isnan(Uzint))
+               Ubr1(j,k) = NaN;
+           else
+               [Cuu,F] = pwelch(Uxint,[],[],[],8);
+               df = F(3)-F(2);
+               Ubr1(j,k) = sqrt(2*sum(Cuu*df));
+               Ec = (1/nBins)*sum(Uxint);Nc = (1/nBins)*sum(Uyint);
+               Ewrms = sqrt((1/nBins)*sum((Uxint-Ec).^2));
+               Nwrms = sqrt((1/nBins)*sum((Uyint-Nc).^2));
+               Wc = (1/nBins)*sum(Uzint);Wwrms1(j,k) = sqrt((1/nBins)*sum((Uzint-Wc).^2));
+               Uc1(j,k) = sqrt(Ec^2+Nc^2);
+               Uwrms1(j,k) = sqrt(Ewrms^2+Nwrms^2);
+           end
+        end
+    end
+
+    %Load data structure
+    data.scenarioNumber(i) = str2double(whichModel);
+    data.Tp(i) = Tp;
+    data.Hs(i) = Hs;
+    data.h(i) = h;
+    data.gamma(i) = gamma;
+    data.steepness(i) = steepness;
+    data.D(i) = D;
+    data.xBins(:,:,i) = xBins;
+    data.zBins(:,:,i) = zBins;
+    data.k(:,:,i) = TKEavgg;
+    data.eps(:,:,i) = epsg;
+    data.Umag(:,:,i) = Umagg;
+    data.Ubr(:,:,i) = Ubr;
+    data.Uc(:,:,i) = Uc; 
+    data.Uw(:,:,i) = Uw;
+    data.Ww(:,:,i) = Ww; 
+end
+save([HRmodelDir 'HR_postProcess_epsilon_' versionNO '.mat'],'-struct','data','-mat','-v7.3')
+clear data
+disp(['Data analysis completed in ' num2str(toc(t1)/60) ' minutes'])
+
+disp('Loading LR models')
+t2 = tic;
+%Load modelInfo from the CSV file and create a structure from the data
+modelNames = 'Models_allLR.csv';
+fid = fopen([workingDir modelNames]);
+header = textscan(fgetl(fid),repmat('%s',1,9),'delimiter',',');
+data = textscan(fid,repmat('%f',1,9),'delimiter',',');
+modelInfo = cell2struct(data,[header{:}],2);clear data
+%Loop through model scenarios and load the data into a structure
+data = struct();
+for i = 1:length(modelInfo.scenarioNumber)
+    whichModel = string(modelInfo.scenarioNumber(i));
+    %Find model folders
+    scenarioNumber = regexp(LRmodelFree','(?<=_)(.*?)(?=_)','match');
+    scenarioNumber = cat(1, scenarioNumber{:});
+    modelID = find(strcmp(whichModel,scenarioNumber));
+    fprintf('Loading file %0.0f of %0.0f: %s\n',i,length(modelInfo.scenarioNumber),LRmodelFree{modelID})
+    LR = load([LRmodelDir LRmodelRaw{modelID}]);
+    FS = load([LRmodelDir LRmodelFree{modelID}]);
+    
+    %Calculate wave energy dissipation @ WG1 and WG2 
+    [WG1,~] = pwelch(FS.WG1.eta,[],[],[],8);
+    [WG2,F] = pwelch(FS.WG9.eta,[],[],[],8);
+    
+    Tp = modelInfo.Tp(i);
+    Hs = modelInfo.Hs(i);
+    h = modelInfo.h(i);
+    k = wavek(F,h);
+    kh = k*h;
+    c = sqrt(9.81.*tanh(kh))./sqrt(k);
+    n = (1/2)*(1+((2*kh)./(sinh(2*kh))));
+    Cg = n.*c;
+    cutoff = find(F>=0.5,1,'last');
+    F1 = trapz(1025*9.81*WG1(2:cutoff).*Cg(2:cutoff));
+    F2 = trapz(1025*9.81*WG2(2:cutoff).*Cg(2:cutoff));
+    D = abs((F1-F2)/(73-31));
+    gamma = Hs/h;
+    lambda = (9.81.*(Tp.^2))./(2*pi);
+    steepness = Hs/lambda;
+    
+    %Average turbulence in time; use tStart and tStop to crop model data
+    %based on analysis of "good" timesteps (see
+    %Paper1_animateModelTimesteps.m)
+    if min(size(LR.epsilon.epsilon)) ~= length(LR.time)
+        times = LR.time(1:min(size(LR.epsilon.epsilon)));
+    else
+        times = LR.time;
+    end
+    timeID = find(times >= modelInfo.tStart(i) & times <= modelInfo.tStop(i));
+    epsAvg = mean(LR.epsilon.epsilon(:,timeID),2);
+    x = LR.epsilon.x(:,1)-30;
+    z = LR.epsilon.z(:,1);
+    
+    nBins = 100;
+    xBins = linspace(min(x),max(x),nBins);
+    zBins = linspace(min(z),max(z),nBins);
+    eBins = linspace(min(epsAvg),max(epsAvg),nBins);
+    
+    ix = discretize(x, xBins);
+    iz = discretize(z, zBins);
+    idx = sub2ind([nBins nBins], ix, iz);
+    epsg = accumarray(idx, epsAvg, [nBins*nBins 1], @(x) mean(x), NaN);
+    epsg = reshape(epsg, nBins, nBins);
+    
+    %Compute Umag and average in time
+    Umag = sqrt((LR.U.Ux.^2)+(LR.U.Uy.^2)+(LR.U.Uz.^2));
+    UmagAvg = mean(Umag(:,timeID),2);
+    Umagg = accumarray(idx, UmagAvg, [nBins*nBins 1], @(x) mean(x), NaN);
+    Umagg = reshape(Umagg, nBins, nBins);
+    
+    %Average TKE (k) in time
+    TKEavg = mean(LR.k.k(:,timeID),2);
+    TKEavgg = accumarray(idx, TKEavg, [nBins*nBins 1], @(x) mean(x), NaN);
+    TKEavgg = reshape(TKEavgg, nBins, nBins);
+    
+    %Compute mean oscillatory velocity Uw. Uw^3 should be proportional to 
+    %TKE dissipation from bottom friction if dissipation comes from bottom
+    %friction and not breaking
+    [m,n] = size(LR.U.x(:,timeID));
+    Ux = zeros(nBins,nBins,n);
+    Uy = zeros(nBins,nBins,n);
+    Uz = zeros(nBins,nBins,n);
+    for j = 1:n
+        int = accumarray(idx, LR.U.Ux(:,timeID(j)), [nBins*nBins 1], @(x) mean(x), NaN);
+        Ux(:,:,j) = reshape(int, nBins, nBins);
+        int = accumarray(idx, LR.U.Uy(:,timeID(j)), [nBins*nBins 1], @(x) mean(x), NaN);
+        Uy(:,:,j) = reshape(int, nBins, nBins);
+        int = accumarray(idx, LR.U.Uz(:,timeID(j)), [nBins*nBins 1], @(x) mean(x), NaN);
+        Uz(:,:,j) = reshape(int, nBins, nBins);
+    end
+    %Calculate RMS velocities (Luhar et al. 2013)
+    %Compute wave orbital velocities (Ubr) for all data points. 
+    Ubr = zeros(nBins,nBins);
+    Uc = zeros(nBins,nBins);
+    Uw = zeros(nBins,nBins);
+    Ww = zeros(nBins,nBins);
+    for j = 1:nBins
+        for k = 1:nBins
+           Uxint =  squeeze(Ux(j,k,:));
+           Uyint =  squeeze(Uy(j,k,:));
+           Uzint =  squeeze(Uz(j,k,:));
+           if any(isnan(Uxint) | isnan(Uyint) | isnan(Uzint))
+               Ubr(j,k) = NaN;
+           else
+               [Cuu,F] = pwelch(Uxint,[],[],[],8);
+               df = F(3)-F(2);
+               Ubr(j,k) = sqrt(2*sum(Cuu*df));
+               Ec = (1/nBins)*sum(Uxint);Nc = (1/nBins)*sum(Uyint);
+               Ewrms = sqrt((1/nBins)*sum((Uxint-Ec).^2));
+               Nwrms = sqrt((1/nBins)*sum((Uyint-Nc).^2));
+               Wc = (1/nBins)*sum(Uzint);Wwrms = sqrt((1/nBins)*sum((Uzint-Wc).^2));
+               Uc(j,k) = sqrt(Ec^2+Nc^2);Uwrms = sqrt(Ewrms^2+Nwrms^2);
+               Uw(j,k) = sqrt(2)*Uwrms;
+               Ww(j,k) = sqrt(2)*Wwrms;
+           end
+        end
+    end
+
+    %Load data structure
+    data.scenarioNumber(i) = str2double(whichModel);
+    data.Tp(i) = Tp;
+    data.Hs(i) = Hs;
+    data.h(i) = h;
+    data.gamma(i) = gamma;
+    data.steepness(i) = steepness;
+    data.D(i) = D;
+    data.xBins(:,:,i) = xBins;
+    data.zBins(:,:,i) = zBins;
+    data.k(:,:,i) = TKEavgg;
+    data.eps(:,:,i) = epsg;
+    data.Umag(:,:,i) = Umagg;
+    data.Ubr(:,:,i) = Ubr;
+    data.Uc(:,:,i) = Uc; 
+    data.Uw(:,:,i) = Uw;
+    data.Ww(:,:,i) = Ww; 
+end
+save([LRmodelDir 'LR_postProcess_epsilon_' versionNO '.mat'],'-struct','data','-mat','-v7.3')
+clear data
+disp(['Data analysis completed in ' num2str(toc(t2)/60) ' minutes'])
+
