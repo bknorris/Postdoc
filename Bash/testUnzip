@@ -1,0 +1,14 @@
+#!/bin/bash
+sourcedir="/mnt/h/Models/Paper1_2DwaveFlume/ModelRuns/LR_Domain/Scenarios"
+destdir="/mnt/c/Users/user/Documents/Models/Paper1_2DwaveFlume/ModelRuns/LR_Domain/Scenarios"
+file="Scenario_1.zip"
+echo "Extracting $file"
+curdir=$(pwd)
+unzip "$sourcedir/$file" "${file%.*}/MKKmodel/0/*" -d "$destdir/"
+unzip "$sourcedir/$file" "${file%.*}/MKKmodel/0.org/*" -d "$destdir/"
+unzip "$sourcedir/$file" "${file%.*}/MKKmodel/constant/*" -d "$destdir/"
+unzip "$sourcedir/$file" "${file%.*}/MKKmodel/system/*" -d "$destdir/"
+cd "$destdir/${file%.*}/"
+mv MKKModel/* .
+rmdir MKKmodel/
+cd $curdir

@@ -1,0 +1,15 @@
+#!/bin/bash
+# cd "${0%/*}" || exit                              # Run from this directory
+
+#Choose directories to run models in
+cd /mnt/c/Users/user/Documents/Models/Paper1_2DwaveFlume/ModelRuns/HR_Domain/Scenarios/Scenario_64
+echo $PWD
+./RunModel
+
+cd /mnt/c/Users/user/Documents/Models/Paper1_2DwaveFlume/ModelRuns/HR_Domain/Scenarios/Scenario_39
+echo $PWD
+./RunModel
+
+cd /mnt/c/Users/user/Documents/Models/Paper1_2DwaveFlume/ModelRuns/HR_Domain/Scenarios/Scenario_19
+echo $PWD
+./RunModel

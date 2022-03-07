@@ -1,0 +1,18 @@
+#!/bin/bash
+#------------------------------------------------------------------------------
+# Change these values!
+source="/mnt/c/Users/bknorris/Documents/Models/Paper1_2DwaveFlume/ModelRuns/HR_Domain/BaseCases/"
+dest="/mnt/c/Users/bknorris/Documents/Models/Paper1_2DwaveFlume/ModelRuns/HR_Domain/TestCase/"
+
+# Script:
+cd $source
+for f in */; do #for all directories (*/) in $source...
+	filename=$(basename "$f") #get the directory name 
+	echo "Processing $f"
+	if test -f "$dest$filename.zip"; then #check to see if the filename.zip exists in $dest
+		echo "File already exists in destination! Skipping..."
+	else
+		echo "Writing $filename.zip"
+		zip -0 -qr | pigz -8 -p6 "$filename" "$dest${f%/}.zip"
+	fi
+done

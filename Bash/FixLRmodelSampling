@@ -1,0 +1,22 @@
+#!/bin/bash
+# cd "${0%/*}" || exit                                # Run from this directory
+. ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
+#------------------------------------------------------------------------------
+#FIX LR model bathySample issue...
+
+curdir=$(pwd)
+EXCEPT=""Scenario_1"|"Scenario_16"|"Scenario_23"|"Scenario_28"|"Scenario_11"" #list of folders to exclude from processing
+for folder in /mnt/c/Users/user/Documents/Models/Paper1_2DwaveFlume/ModelRuns/LR_Domain/Scenarios/*; do
+	[ -d "$folder" ] && cd "$folder" && cd MKKmodel/
+	if [[ $folder =~ $EXCEPT ]]; then
+		continue
+	fi
+	echo $folder
+
+	cp ../../../bathySample system/	
+
+	mv ./postProcessing/bathySample ./postProcessing/bathySample_old
+	runApplication reconstructPar
+	runApplication postProcess -func bathySample
+done
+cd $curdir

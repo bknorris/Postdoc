@@ -1,0 +1,19 @@
+#!/bin/bash
+#------------------------------------------------------------------------------
+# Change these values!
+source="/mnt/h/Models/Paper1_2DwaveFlume/ModelRuns/HR_Domain/Scenarios/"
+searchText="LRsampleBox"
+
+# Script:
+cd $source
+for f in *.zip; do #for all directories (*/) in $source...
+	filename=$(basename -s .zip "$f") #get the directory name
+	if [[ "$filename" == *"_old"* ]]; then
+		newfilename="$(sed 's/_old//g' <<<"$filename")"
+	else
+		newfilename="$filename"
+	fi
+	if ( unzip -c "$filename" "$newfilename/RunModel" | grep -q "$searchText" ); then
+		echo $filename
+	fi
+done

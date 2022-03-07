@@ -1,0 +1,22 @@
+#!/bin/bash
+# cd "${0%/*}" || exit                                # Run from this directory
+. ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
+#------------------------------------------------------------------------------
+#FIX LR model bathySample issue...
+
+curdir=$(pwd)
+INCLUDE=""Scenario_21"|"Scenario_78"" #list of folders to run processing
+for folder in /mnt/c/Users/user/Documents/Models/Paper1_2DwaveFlume/ModelRuns/LR_Domain/DataAnalysis/TempFiles/*; do
+	[ -d "$folder" ] && cd "$folder" && cd MKKmodel/
+	if [[ ! $folder =~ $INCLUDE ]]; then
+		continue
+	fi
+	echo $folder
+
+	cp ../../../../bathySample system/	
+
+	mv ./postProcessing/bathySample ./postProcessing/bathySample_old
+	runApplication reconstructPar
+	runApplication postProcess -func bathySample
+done
+cd $curdir

@@ -1,0 +1,21 @@
+#!/bin/bash
+sourcedir="/mnt/h/Models/Paper1_2DwaveFlume/ModelRuns/LR_Domain/Scenarios"
+destdir="/mnt/c/Users/user/Documents/Models/Paper1_2DwaveFlume/ModelRuns/LR_Domain/Scenarios"
+curdir=$(pwd)
+for folder in $sourcedir/*.zip; do
+	path=$folder
+	file=${path##*/}
+	echo "Extracting $file"
+
+	#Extract only model set-up files from 0/, 0.org/, constant/, and system/
+	unzip "$sourcedir/$file" "${file%.*}/MKKmodel/0/*" -d "$destdir/"
+	unzip "$sourcedir/$file" "${file%.*}/MKKmodel/0.org/*" -d "$destdir/"
+	unzip "$sourcedir/$file" "${file%.*}/MKKmodel/constant/*" -d "$destdir/"
+	unzip "$sourcedir/$file" "${file%.*}/MKKmodel/system/*" -d "$destdir/"
+
+	#Move model files up one directory and delete MKKModel/
+	cd "$destdir/${file%.*}/"
+	mv MKKModel/* .
+	rmdir MKKmodel/
+	cd $curdir
+done

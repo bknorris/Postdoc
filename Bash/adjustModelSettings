@@ -1,0 +1,50 @@
+#!/bin/bash
+
+# Purpose: This script adjusts model settings in OpenFOAM files based on a csv of values
+# Author:  Benjamin K. Norris (U.S. Geological Survey)
+
+### BEGIN ###
+csvfile="/mnt/c/Users/bknorris/Documents/IPDS/Paper1_2DwaveFlume/IP-137647-Models/adjustModelSettings.csv"
+sourcedir="/mnt/c/Users/bknorris/Documents/Models/Paper1_2DwaveFlume/ModelRuns/LR_Domain/Scenarios"
+destdir="/mnt/c/Users/bknorris/Documents/Models/Paper1_2DwaveFlume/ModelRuns/LR_Domain/Scenarios/Modified"
+
+dos2unix $csvfile # Windows formatted CSVs end in \r\n which will mess up $col9
+## Loop through the model directory and only process folders listed in the CSV
+for folder in  $sourcedir/*/ ; do
+	file=$(basename "$folder")
+	# Read the CSV and match the line with the model name 
+		# CSV line headers:
+		# col1 = orgScenarioNumber
+		# col2 = newScenarioNumber
+		# col3 = waterDepth
+		# col4 = waveHeight
+		# col5 = wavePeriod
+		# col6 = rampTime
+		# col7 = runTime
+		# col8 = purgeWrite
+		# col9 = waveTheory
+
+	while IFS=, read -r col1 col2 col3 col4 col5 col6 col7 col8 col9;do
+		if [[ "$file" == *"_$col1" ]]; then
+			echo "Processing $file"
+			# Replace values in the folder with values from the CSV
+
+			# Edit waveProperties first
+			fileToEdit="${folder}constant/waveProperties"
+			echo $fileToEdit
+			sed -i "s/waveModel       \(.*\);/waveModel       $col9;/g" $fileToEdit
+			sed -i "s/rampTime        \(.*\);/rampTime        $col6;/g" $fileToEdit
+
+			# Now edit controlDict
+			fileToEdit="${folder}system/controlDict"
+			echo $fileToEdit
+			sed -i "s/endTime         \(.*\);/endTime         $col7;/g" $fileToEdit
+			sed -i "s/purgeWrite      \(.*\);/purgeWrite      $col8;/g" $fileToEdit
+
+			# Now rename the folder according to col2
+			mv $folder "$destdir/Scenario_$col2"
+			printf '\n\n'
+
+		fi
+	done < <(tail -n +2 $csvfile)
+done

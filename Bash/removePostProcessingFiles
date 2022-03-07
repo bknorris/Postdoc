@@ -1,0 +1,11 @@
+#!/bin/bash
+# cd "${0%/*}" || exit                              # Run from this directory
+
+#Navigate to Model postprocessing folder
+cd Model/postProcessing/freeSurface
+find . -name '[0-9].[0-9]*' -type d -exec rm -rv '{}' \; #matches 0.0 to 9.9
+find . -name '[1-3][0-9].[0-9]*' -type d -exec rm -rv '{}' \; #matches 10.0 to 39.9
+
+cd ../bathySample/surface
+find . -name '[0-9].[0-9]*' -type d -exec rm -rv '{}' \;
+find . -name '[1-3][0-9].[0-9]*' -type d -exec rm -rv '{}' \;
