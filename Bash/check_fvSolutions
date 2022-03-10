@@ -1,0 +1,13 @@
+#!/bin/bash
+sourcedir="/mnt/c/Users/user/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/BaseCases"
+curdir=$(pwd)
+for folder in $sourcedir/*; do
+	path=$folder
+	file=${path##*/}
+	fullpath="$path/Model/system/fvSolution"
+
+	printf "$file\n"
+	cat $fullpath
+	read -p "Press enter to continue"
+	printf "\n\n"
+done

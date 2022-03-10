@@ -1,0 +1,22 @@
+#!/bin/bash
+sourcedir="/mnt/h/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios"
+destdir="/mnt/c/Users/user/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios"
+file="Scenario_1"
+curdir=$(pwd)
+
+echo "Extracting $file"
+echo "$sourcedir/$file.zip"
+echo "${file%.*}/Model/0/*"
+echo "$destdir/"
+
+#Extract only model set-up files from 0/, 0.org/, constant/, and system/
+# unzip "$sourcedir/$file.zip" "${file%.*}/Model/0/*" -d "$destdir/"
+# unzip "$sourcedir/$file" "${file%.*}/Model/0.org/*" -d "$destdir/"
+# unzip "$sourcedir/$file" "${file%.*}/Model/constant/*" -d "$destdir/"
+# unzip "$sourcedir/$file" "${file%.*}/Model/system/*" -d "$destdir/"
+
+# #Move model files up one directory and delete MKKModel/
+# cd "$destdir/${file%.*}/"
+# mv Model/* .
+# rmdir Model/
+# cd $curdir

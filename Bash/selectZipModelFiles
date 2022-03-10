@@ -1,0 +1,23 @@
+#!/bin/bash
+# cd "${0%/*}" || exit                                # Run from this directory
+#------------------------------------------------------------------------------
+# Change these values!
+
+source="/mnt/c/Users/user/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/Test/"
+dest="/mnt/c/Users/user/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/Test/ZipFiles/"
+
+curdir=$(pwd)
+cd $source
+EXCEPT=""Scenario_1"|"Scenario_10"|"ZipFiles"" #list of folders to exclude from processing
+for f in */; do #for all directories (*/) in $source..
+	filename=$(basename "$f") #get the directory name 
+	[[ $filename == @($EXCEPT) ]] && continue
+	echo "Processing $f"
+	if test -f "$dest$filename.zip"; then #check to see if the filename.zip exists in $dest
+		echo "File already exists in destination! Skipping..."
+	else
+		echo "Writing $filename.zip"
+		7z -a "$dest${f%/}.zip" "$filename"
+	fi
+done
+cd $curdir
