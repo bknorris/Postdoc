@@ -1,8 +1,8 @@
 #!/bin/bash
 #------------------------------------------------------------------------------
 # Change these values!
-source="/mnt/c/Users/bknorris/Documents/Models/Paper1_2DwaveFlume/ModelRuns/HR_Domain/BaseCases/"
-dest="/mnt/c/Users/bknorris/Documents/Models/Paper1_2DwaveFlume/ModelRuns/HR_Domain/TestCase/"
+source="/mnt/e/BKN-FIELD/Models/Paper1_2DwaveFlume/ModelRuns/LR_Domain/Scenarios/"
+dest="/mnt/h/Models/Paper1_2DwaveFlume/ModelRuns/LR_Domain/Scenarios/"
 
 # Script:
 cd $source
@@ -13,6 +13,6 @@ for f in */; do #for all directories (*/) in $source...
 		echo "File already exists in destination! Skipping..."
 	else
 		echo "Writing $filename.zip"
-		zip -0 -qr | pigz -8 -p6 "$filename" "$dest${f%/}.zip"
+		zip -qr "$dest${f%/}.zip" "$filename"
 	fi
 done

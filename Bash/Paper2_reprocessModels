@@ -6,15 +6,23 @@
 # Author:  Benjamin K. Norris (U.S. Geological Survey)
 #---------------------------------------------------------------------------------------
 
-# Initialize current directory; OpenFOAM applications
+# Initialize current directory
 curdir=$(pwd)
+
+# Use the working OF version
+source /opt/OpenFOAM/OpenFOAM-v1912/etc/bashrc
+
+# Make sure you're using the right OF version
+echo $FOAM_SOLVERS 
+
+# Initialize OpenFOAM utilities
 . ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions
 
 # Define source and destination directories
 # NOTE: destdir must be the root directory for the models!
-csvfile="/mnt/c/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/adjustModelSampling_TEST.csv"
-sourcedir="/mnt/c/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/"
-destdir="/mnt/c/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/"
+csvfile="/mnt/c/Users/user/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/adjustModelSampling_RESTART1.csv"
+sourcedir="/mnt/h/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/"
+destdir="/mnt/c/Users/user/Documents/Models/Paper2_OptimizingRestoration/"
 
 # Check to see if CSV is windows formatted or unix formatted
 if [[ $csvfile == *$'\n' ]]; then
@@ -30,24 +38,25 @@ else
 	echo "Reprocessed folder already exists in the source directory!"
 fi
 
-## Loop through the model directory and only process folders listed in the CSV
-for files in ${sourcedir}*.zip ; do #"$sourcedir/*.zip"  $sourcedir/*/
+# Loop through the model directory and only process folders listed in the CSV
+for files in ${sourcedir}*.zip; do #"$sourcedir/*.zip"  $sourcedir/*/
 	file=$(basename "$files")
 	file=${file%%.*} # Remove file extension
-	# Read the CSV and match the line with the model name 
-		# CSV line headers:
-		# col1 = orgScenarioNumber
-		# col2 = waterDepth
-		# col3 = waveHeight
-		# col4 = wavePeriod
-		# col5 = rampTime
-		# col6 = runTime
-		# col7 = purgeWrite
-		# col8 = waveTheory
+		## ADD CHECK SOURCEDIR FOR EXISTANCE OF ZIP FILE
+		# Read the CSV and match the line with the model name 
+			# CSV line headers:
+			# col1 = orgScenarioNumber
+			# col2 = waterDepth
+			# col3 = waveHeight
+			# col4 = wavePeriod
+			# col5 = rampTime
+			# col6 = runTime
+			# col7 = purgeWrite
+			# col8 = waveTheory
 
 	while IFS=, read -r col1 col2 col3 col4 col5 col6 col7 col8;do
 		if [[ "$file" == *"_$col1" ]]; then
-			echo "Processing $file"
+			echo "Processing ${file}"
 
 			# Unzip model file from sourcedir to destdir
 			7z x "$sourcedir$file.zip" "-o${destdir}ModelRuns/Scenarios/"
@@ -68,8 +77,8 @@ for files in ${sourcedir}*.zip ; do #"$sourcedir/*.zip"  $sourcedir/*/
  			fi
 
  			# Copy sampling utilities to model folder
- 			cp -r ../Scenarios/freeSurface ./system
- 			cp -r ../Scenarios/bathySample ./system
+ 			cp -r ../../freeSurface ./system
+ 			cp -r ../../bathySample ./system
 
  			# Replace values in the folder with values from the CSV:
  			echo "Updating model control file with new values..."
@@ -80,21 +89,38 @@ for files in ${sourcedir}*.zip ; do #"$sourcedir/*.zip"  $sourcedir/*/
  			sed -i "s/purgeWrite      \(.*\);/purgeWrite      $col7;/g" $fileToEdit
 
  			# Re-run postProcessing utility
-
- 			## Adjust to mpi "runParallel" on BKN-FIELD or DISCO2? ##
  			echo "Running postProcessing utilities..."
- 			runApplication reconstructPar
- 			rm log.postProcess
- 			runApplication postProcess -func freeSurface
- 			rm log.postProcess
- 			runApplication postProcess -func bathySample
+ 			if test -f "log.interFoam"; then
+ 				rm log.interFoam
+ 			fi
+ 			runParallel $(getApplication) -postProcess -func freeSurface
+ 			rm log.interFoam
+ 			sleep 2s # Sometimes the script hangs at the next step
+ 			runParallel $(getApplication) -postProcess -func bathySample
+ 			rm log.interFoam	
 
  			# Remove reconstructed folders to save disk space
- 			find . -name '[1-9][0-9].[0-9]*' -type d -exec rm -rv '{}' \; #exclude 0/ and 0.org/ folders
+ 			echo "Removing extra reconstruted postProcessing folders..."
+ 			cd postProcessing/freeSurface
+ 			if [[ $col4 == '5' ]]; then
+ 				find . -name "4[5-9].[0-9]*" -type d -prune -exec rm -r '{}' \; 
+ 				find . -name "[5-9][0-9].[0-9]*" -type d -prune -exec rm -r '{}' \; 
+ 			else
+ 				find . -name "[9][0-9].[0-9]*" -type d -prune -exec rm -r '{}' \;
+ 				find . -name "[1][0-9][0-9].[0-9]*" -type d -prune -exec rm -r '{}' \;
+ 			fi
+ 			cd ../bathySample/surface
+ 			if [[ $col4 == '5' ]]; then
+ 				find . -name "4[5-9].[0-9]*" -type d -prune -exec rm -r '{}' \; 
+ 				find . -name "[5-9][0-9].[0-9]*" -type d -prune -exec rm -r '{}' \; 
+ 			else
+ 				find . -name "[9][0-9].[0-9]*" -type d -prune -exec rm -r '{}' \;
+ 				find . -name "[1][0-9][0-9].[0-9]*" -type d -prune -exec rm -r '{}' \;
+ 			fi
 
  			# Zip model file from destdir to sourcedir
  			echo "Creating new ZIP file..."
- 			cd ../../
+ 			cd $destdir"ModelRuns/Scenarios/$file"
  			7z a "${sourcedir}Reprocessed/$file.zip" -o"$file" 
 
  			# Remove file from destdir
