@@ -22,11 +22,6 @@ model_source = Path('h:/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/
 model_dest = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/')
 model_info = 'adjustModelSampling_TEST.csv'
 
-# Define model default settings ### MOVE THIS TO UTILITIES SCRIPT!
-x_bnd = (0, 2.6)  # lower/upper
-z_bnd = (-5, -0.005)  # lower/upper
-model_timestep = 0.5  # timestep in s
-
 # Begin program
 # 1. Load CSV
 csv_file = model_dest / model_info
@@ -39,13 +34,14 @@ filenames = next(os.walk(str(model_source)), (None, None, []))[2]
 for idx, file in enumerate(filenames):
     # 3a. Check if file is in model_info, only process if so
     scenario_number = re.search('\_(.*)\.', file).group(1)
-    if int(scenario_number) in model_info['orgScenarioNumber']:
+    if int(scenario_number) == model_info['orgScenarioNumber'][0]:
         
         print('Processing ' + file)
         
         # 3b. Unzip model file to model_source
-        with zipfile.ZipFile(str(model_source / file), 'r') as zip_file:
-            zip_file.extractall(str(model_dest / file.split('.')[0]))
+        model_name = file.split('.')[0]  # model folder without extension
+        # with zipfile.ZipFile(str(model_source / file), 'r') as zip_file:
+        #     zip_file.extractall(str(model_dest / model_name))
         
         # 3c. Run processing functions on model files
         
