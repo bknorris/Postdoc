@@ -22,7 +22,7 @@ import analysisUtils
 
 
 class loadModelFiles:
-    ''' 
+    '''
     Processing utilities for OpenFOAM model output files. Note this script
     is designed to work with the Paper2_OptimizingRestoration model files only!
     
@@ -53,7 +53,7 @@ class loadModelFiles:
         wave_gauges = np.linspace(x_bnd[0], x_bnd[1], 10)  # 10 evenly spaced WGs
         
         # Get the model folders from postProcessing
-        full_path = dest_path + "\\" + model_name + loadModelFiles.postProcessing + "freeSurface\\"
+        full_path = dest_path + "\\" + model_name + "\\Model\\postProcessing\\freeSurface\\"
         folders = next(os.walk(full_path), (None, None, []))[1]
         
         self.source_path = source_path
@@ -71,11 +71,10 @@ class loadModelFiles:
         
     def loadFreeSurface(self, timesteps):
         # Set timer
-        startTime = time.time()
+        startTime = time()
         
         # Redefine full_path for freeSurface postProcessing folder
-        surf_path = self.dest_path + "\\" + self.model_name,
-        "\\Model\\postProcessing\\freeSurface\\"
+        surf_path = self.dest_path + "\\" + self.model_name + "\\Model\\postProcessing\\freeSurface\\"
         output = []
         for folder in self.model_folders:
             full_path = surf_path + folder + "\\"
@@ -106,17 +105,50 @@ class loadModelFiles:
         freeSurf.insert(loc=0, column='TimeStep', value=timesteps)
         
         # Print elapsed time and return freeSurf
-        executionTime = (time.time() - startTime) / 60
+        executionTime = (time() - startTime) / 60
         print(f'Data loaded in {executionTime:.2f} minutes')
         return freeSurf
     
     def loadFields(self, timesteps):
         # Set timer
-        # startTime = time()
+        startTime = time()
 
         # Redefine full_path for bathySample postProcessing folder
-        bathy_path = self.dest_path + "\\" + self.model_name,
-        "\\Model\\postProcessing\\bathySample\\surface\\"
+        bathy_path = self.dest_path + "\\" + self.model_name + "\\Model\\postProcessing\\bathySample\\surface\\"
         
         print('Loading U field data')
         output = []
+        for folder in self.model_folders:
+            full_path = bathy_path + folder + "\\"
+            file = next(os.walk(full_path))[2]
+            fid = file.index('U_sampledSurface_bathymetrySample.raw')
+            file_text = analysisUtils.read_model_file(full_path + file[fid])
+            x_vals = np.array(file_text['x'])
+            y_vals = np.array(file_text['y'])
+            z_vals = np.array(file_text['z'])
+            Ux_vals = np.array(file_text['U_x'])
+            Uy_vals = np.array(file_text['U_y'])
+            Uz_vals = np.array(file_text['U_z'])
+            
+            # Crop the data file by the area defined by the user
+            crop_x = np.where(np.logical_and(x_vals >= self.x_bnd[0], x_vals <= self.x_bnd[1]))
+            crop_z = np.where(np.logical_and(z_vals >= self.z_bnd[0], z_vals <= self.z_bnd[1]))
+            crop_xz = np.intersect1d(crop_x, crop_z)
+            
+            # Output data into dicts
+            keys = ['x', 'y', 'z', 'Ux', 'Uy', 'Uz']
+            values = [x_vals[crop_xz], y_vals[crop_xz], z_vals[crop_xz], Ux_vals[crop_xz], Uy_vals[crop_xz], Uz_vals[crop_xz]]
+            
+            output.append(dict(zip(keys, values)))
+            del file_text, x_vals, y_vals, z_vals, Ux_vals, Uy_vals, Uz_vals  # clear memory
+            
+        # Create data frame from list of dicts (output)
+        U = pd.DataFrame(output)
+        U.insert(loc=0, column='TimeStep', value=timesteps)
+        
+        # Print elapsed time and return U
+        executionTime = (time() - startTime) / 60
+        print(f'Data loaded in {executionTime:.2f} minutes')
+        return U
+    
+        ### NOTE: CHECK OUTPUT OF U in SEABORN 3D SCATTER PLOT!
