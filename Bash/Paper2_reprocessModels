@@ -34,15 +34,12 @@ fi
 if ! test -d "${sourcedir}Reprocessed"; then #check to see if the filename.zip exists in $dest
 	echo "No Reprocessed folder exists in the source directory... creating folder!"
 	mkdir "${sourcedir}Reprocessed"
-else
-	echo "Reprocessed folder already exists in the source directory!"
 fi
 
 # Loop through the model directory and only process folders listed in the CSV
 for files in ${sourcedir}*.zip; do #"$sourcedir/*.zip"  $sourcedir/*/
 	file=$(basename "$files")
 	file=${file%%.*} # Remove file extension
-		## ADD CHECK SOURCEDIR FOR EXISTANCE OF ZIP FILE
 		# Read the CSV and match the line with the model name 
 			# CSV line headers:
 			# col1 = orgScenarioNumber
@@ -95,7 +92,7 @@ for files in ${sourcedir}*.zip; do #"$sourcedir/*.zip"  $sourcedir/*/
  			fi
  			runParallel $(getApplication) -postProcess -func freeSurface
  			rm log.interFoam
- 			sleep 2s # Sometimes the script hangs at the next step
+ 			sleep 10s # Sometimes the script hangs at the next step
  			runParallel $(getApplication) -postProcess -func bathySample
  			rm log.interFoam	
 
@@ -121,7 +118,7 @@ for files in ${sourcedir}*.zip; do #"$sourcedir/*.zip"  $sourcedir/*/
  			# Zip model file from destdir to sourcedir
  			echo "Creating new ZIP file..."
  			cd $destdir"ModelRuns/Scenarios/$file"
- 			7z a "${sourcedir}Reprocessed/$file.zip" -o"$file" 
+ 			7z a -mmt=18 "${sourcedir}Reprocessed/$file.zip" -o"$file" 
 
  			# Remove file from destdir
  			echo "Removing folder..."
