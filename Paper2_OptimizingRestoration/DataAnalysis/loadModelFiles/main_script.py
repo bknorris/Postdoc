@@ -12,31 +12,38 @@ BKN - USGS PCMSC 2022
 import os
 import re
 import zipfile
-from pathlib import Path
+import time
+import numpy as np
 import pandas as pd
 import loadModelFiles
+from pathlib import Path
 
 version_no = 'V1'  # file version; appends to model save file
 
 # Define file paths:
-model_source = Path('h:/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/Reprocessed/')
+model_source = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/')
 model_dest = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/')
 model_info = 'adjustModelSampling_TEST.csv'
 
 # Begin program
 # 1. Load CSV
+t = time.localtime()
+current = time.strftime("%H:%M:%S", t)
+print('The current time is: ' + current)
 csv_file = model_dest / model_info
 model_info = pd.read_csv(csv_file.open())
 
 # 2. Get model names from the model directory
-filenames = next(os.walk(str(model_source)), (None, None, []))[2]
+filenames = next(os.walk(str(model_source)))[1]  # For later, [1] is dirs and [2] is files
 
-# 3. Run data processing on files in model_source
-for idx, file in enumerate(filenames):
+# 3. Load files in model_source directory
+t1 = time.time()
+for file in filenames:
+    t2 = time.time()
     # 3a. Check if file is in model_info, only process if so
     scenario_number = re.search('\_(.*)\.', file).group(1)
-    if int(scenario_number) == model_info['orgScenarioNumber'][0]:
-        
+    idx = np.where(int(scenario_number) == model_info['orgScenarioNumber'])[0].tolist()
+    if bool(idx):
         print('Processing ' + file)
         
         # 3b. Unzip model file to model_source
@@ -44,5 +51,26 @@ for idx, file in enumerate(filenames):
         # with zipfile.ZipFile(str(model_source / file), 'r') as zip_file:
         #     zip_file.extractall(str(model_dest / model_name))
         
-        # 3c. Run processing functions on model files
+        # 3c. Run loading functions on model files
+        model = loadModelFiles.loadModelFiles(str(model_dest), model_name, model_info['wavePeriod'][idx][0])
+        timestep = model.createTimestep()
+        freeSurf = model.loadFreeSurface(timestep)
+        fields = model.loadFields(timestep)
+        
+        # 3d. Save out binary files to disk
+        save_data_path = str(model_dest) + "\\DataAnalysis\\"
+        model.saveData(freeSurf, 'freeSurf', save_data_path, version_no)
+        model.saveData(fields, 'fields', save_data_path, version_no)
+        
+        # 3e. Clear files from memory, remove model folder on disk to preserve space
+        del timestep, freeSurf, fields
+        # os.remove(str(model_dest / model_name))
+        
+        # Timer
+        executionTime = (time.time() - t2) / 60
+        print(f'File {file} processed in: {executionTime:.2f} minutes')
+
+# End timer
+executionTime = (time.time() - t1) / 60
+print(f'Total runtime: {executionTime:.2f} minutes\n')
         

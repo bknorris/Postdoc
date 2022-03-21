@@ -1,24 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-Class for loading and saving OpenFOAM model freeSurface and field data
-for Paper2_OptimizingRestoration
+Modules for loading and saving OpenFOAM freeSurface and field data
+for Paper2_OptimizingRestoration models.
 
 BKN - USGS PCMSC 2022
 """
 import os
-from time import time
 import pandas as pd
 import numpy as np
+import pickle
 import analysisUtils
-
-# init should contain model paths "/Model/postProcessing/..."
-# init should take in model settings from saveModelFiles.py
-# Create timestep
-# Load freeSurf
-# Load U
-# Load p_rgh
-# Load k
-# Load eps
+from time import time
 
 
 class loadModelFiles:
@@ -28,7 +20,6 @@ class loadModelFiles:
     
     Inputs:
         source_path: path of input file. Must be the base model folder (typically ".../ModelRuns/Scenarios/")
-        dest_path: path where processed data file will be saved
         file_name: model folder name (typically "Scenario_XX")
         wave_period: integer value for the wave period of each model (used to
                      determine which processing step to run)
@@ -37,7 +28,7 @@ class loadModelFiles:
         pandas array containing model freeSurface and field data saved in BIN format
     '''
     
-    def __init__(self, source_path, dest_path, model_name, wave_period):
+    def __init__(self, source_path, model_name, wave_period):
         if wave_period == 5:
             x_bnd = (0, 2.6)  # lower/upper
             z_bnd = (-0.028, -0.001)  # lower/upper
@@ -53,11 +44,10 @@ class loadModelFiles:
         wave_gauges = np.linspace(x_bnd[0], x_bnd[1], 10)  # 10 evenly spaced WGs
         
         # Get the model folders from postProcessing
-        full_path = dest_path + "\\" + model_name + "\\Model\\postProcessing\\freeSurface\\"
+        full_path = source_path + "\\" + model_name + "\\Model\\postProcessing\\freeSurface\\"
         folders = next(os.walk(full_path), (None, None, []))[1]
         
         self.source_path = source_path
-        self.dest_path = dest_path
         self.model_name = model_name
         self.model_folders = folders[1:]  # ignore first directory (is 0 time)
         self.x_bnd = x_bnd
@@ -74,7 +64,9 @@ class loadModelFiles:
         startTime = time()
         
         # Redefine full_path for freeSurface postProcessing folder
-        surf_path = self.dest_path + "\\" + self.model_name + "\\Model\\postProcessing\\freeSurface\\"
+        surf_path = self.source_path + "\\" + self.model_name + "\\Model\\postProcessing\\freeSurface\\"
+        
+        print('Loading model free surface data...')
         output = []
         for folder in self.model_folders:
             full_path = surf_path + folder + "\\"
@@ -106,7 +98,7 @@ class loadModelFiles:
         
         # Print elapsed time and return freeSurf
         executionTime = (time() - startTime) / 60
-        print(f'Data loaded in {executionTime:.2f} minutes')
+        print(f'Data loaded in: {executionTime:.2f} minutes')
         return freeSurf
     
     def loadFields(self, timesteps):
@@ -114,21 +106,35 @@ class loadModelFiles:
         startTime = time()
 
         # Redefine full_path for bathySample postProcessing folder
-        bathy_path = self.dest_path + "\\" + self.model_name + "\\Model\\postProcessing\\bathySample\\surface\\"
+        bathy_path = self.source_path + "\\" + self.model_name + "\\Model\\postProcessing\\bathySample\\surface\\"
         
-        print('Loading U field data')
+        # Load the field data
+        print('Loading model field data...')
         output = []
         for folder in self.model_folders:
             full_path = bathy_path + folder + "\\"
             file = next(os.walk(full_path))[2]
+            
+            # Read in text files
             fid = file.index('U_sampledSurface_bathymetrySample.raw')
-            file_text = analysisUtils.read_model_file(full_path + file[fid])
-            x_vals = np.array(file_text['x'])
-            y_vals = np.array(file_text['y'])
-            z_vals = np.array(file_text['z'])
-            Ux_vals = np.array(file_text['U_x'])
-            Uy_vals = np.array(file_text['U_y'])
-            Uz_vals = np.array(file_text['U_z'])
+            U_text = analysisUtils.read_model_file(full_path + file[fid])
+            fid = file.index('p_rgh_sampledSurface_bathymetrySample.raw')
+            p_rgh_text = analysisUtils.read_model_file(full_path + file[fid])
+            fid = file.index('k_sampledSurface_bathymetrySample.raw')
+            k_text = analysisUtils.read_model_file(full_path + file[fid])
+            fid = file.index('epsilon_sampledSurface_bathymetrySample.raw')
+            epsilon_text = analysisUtils.read_model_file(full_path + file[fid])
+            
+            # Create arrays from text data
+            x_vals = np.array(U_text['x'])
+            y_vals = np.array(U_text['y'])
+            z_vals = np.array(U_text['z'])
+            Ux_vals = np.array(U_text['U_x'])
+            Uy_vals = np.array(U_text['U_y'])
+            Uz_vals = np.array(U_text['U_z'])
+            p_rgh = np.array(p_rgh_text['p_rgh'])
+            k = np.array(k_text['k'])
+            epsilon = np.array(epsilon_text['epsilon'])
             
             # Crop the data file by the area defined by the user
             crop_x = np.where(np.logical_and(x_vals >= self.x_bnd[0], x_vals <= self.x_bnd[1]))
@@ -136,19 +142,48 @@ class loadModelFiles:
             crop_xz = np.intersect1d(crop_x, crop_z)
             
             # Output data into dicts
-            keys = ['x', 'y', 'z', 'Ux', 'Uy', 'Uz']
-            values = [x_vals[crop_xz], y_vals[crop_xz], z_vals[crop_xz], Ux_vals[crop_xz], Uy_vals[crop_xz], Uz_vals[crop_xz]]
+            keys = ['x', 'y', 'z', 'Ux', 'Uy', 'Uz', 'p_rgh', 'k', 'epsilon']
+            values = [x_vals[crop_xz], y_vals[crop_xz], z_vals[crop_xz],
+                      Ux_vals[crop_xz], Uy_vals[crop_xz], Uz_vals[crop_xz],
+                      p_rgh[crop_xz], k[crop_xz], epsilon[crop_xz]]
             
             output.append(dict(zip(keys, values)))
-            del file_text, x_vals, y_vals, z_vals, Ux_vals, Uy_vals, Uz_vals  # clear memory
+            del U_text, x_vals, y_vals, z_vals,
+            Ux_vals, Uy_vals, Uz_vals,
+            p_rgh, k, epsilon  # clear memory
             
         # Create data frame from list of dicts (output)
-        U = pd.DataFrame(output)
-        U.insert(loc=0, column='TimeStep', value=timesteps)
+        fields = pd.DataFrame(output)
+        fields.insert(loc=0, column='timestep', value=timesteps)
         
         # Print elapsed time and return U
         executionTime = (time() - startTime) / 60
-        print(f'Data loaded in {executionTime:.2f} minutes')
-        return U
+        print(f'Data loaded in: {executionTime:.2f} minutes')
+        return fields
     
-        ### NOTE: CHECK OUTPUT OF U in SEABORN 3D SCATTER PLOT!
+    def saveData(self, data, kind, file_path, version):
+        '''
+        Inputs:
+            data: data to be saved as a binary file
+            kind: string type of data file to be saved [e.g., freeSurf, fields]
+            file_path: path to save out binary file
+            version: string value for version no. [e.g., V1, V2, etc.]
+        '''
+        
+        print('Saving ' + kind + ' file...')
+        save_file = False
+        output_file = self.model_name + "_" + kind + "_RAWfile_" + version + ".dat"
+        if os.path.isfile(file_path + output_file):
+            print('File already exists in destination directory!')
+            result = input('Overwrite? (y/n) ')
+            if result == 'y':
+                save_file = True
+                
+        else:
+            save_file = True
+            
+        if save_file:
+            file_obj = open(file_path + output_file, mode='wb')
+            pickle.dump(data, file_obj)
+            file_obj.close()
+        
