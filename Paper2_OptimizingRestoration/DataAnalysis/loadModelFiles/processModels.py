@@ -14,22 +14,23 @@ import analysisUtils
 from scipy import signal
 
 
-class processModels:
-    '''
-    Processing utilities for OpenFOAM model output files. Note this script
-    is designed to work with the Paper2_OptimizingRestoration model files only!
-    
-    Inputs:
-        source_path: path of input file. Must be the base model folder (typically ".../ModelRuns/Scenarios/")
-        file_name: model folder name (typically "Scenario_XX")
-        wave_period: integer value for the wave period of each model (used to
-                     determine which processing step to run)
-        
-    Outputs:
-        pandas array containing model freeSurface and field data saved in BIN format
-    '''
-    
+class processModels: 
     def __init__(self, source_path, model_files, model_info):
+        '''
+        CHANGE THIS HERE!
+        
+        Processing utilities for OpenFOAM model output files. Note this script
+        is designed to work with the Paper2_OptimizingRestoration model files only!
+        
+        Inputs:
+            source_path: path of input file. Must be the base model folder (typically ".../ModelRuns/Scenarios/")
+            file_name: model folder name (typically "Scenario_XX")
+            wave_period: integer value for the wave period of each model (used to
+                         determine which processing step to run)
+            
+        Outputs:
+            pandas array containing model freeSurface and field data saved in BIN format
+        '''
         
         # Load files
         print('Loading model files...')
@@ -65,7 +66,7 @@ class processModels:
         self.gamma = gamma
         self.wavelength = wavelength
         self.steepness = steepness
-        self.wave_gauges
+        self.wave_gauges = wave_gauges
     
     def computeWaveEnergy(self):
         print('Performing wave energy calculations...')
@@ -89,6 +90,13 @@ class processModels:
                 
         # Mean wave energy dissipation
         del_x = wave_gauges[-1] - wave_gauges[0]
-        # SEE: Paper1_ployWaveDissipationFactorVsTp_V2_alt2
+        ubr = np.sqrt(np.sum(ubj[-1])**2)
+        omegar = np.sum(omegaj[-1] * (ubj[-1]**2)) / np.sum(ubj[-1]**2)
+        Ab = ubr / omegar
+        epsj = -1 * (F[-1] - F[0]) / del_x
+        fej = (4 * epsj) / (1025 * ubr * ubj[-1]**2)
+        fer = np.sum(fej * ubj[-1]**2) / np.sum(ubj[-1]**2) ## I don't think this is right...
+        
+        # SEE: Paper1_plotWaveDissipationFactorVsTp_V2_alt2
         # Average TKE Dissipation in time
         
