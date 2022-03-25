@@ -22,10 +22,10 @@ from pathlib import Path
 version_no = 'V1'  # file version; appends to model save file
 
 # Define file paths:
-model_source = Path('h:/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/Reprocessed/')
+model_source = Path('g:/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/')
 model_dest = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/')
 save_data_path = str(model_dest) + "\\DataAnalysis\\"
-model_info = 'adjustModelSampling_RESTART2.csv'
+model_info = 'adjustModelSampling_RESTART3.csv'
 
 # Begin program
 # 1. Load CSV
@@ -48,7 +48,7 @@ for file in filenames:
         # 3a. Check if file is in model_info, only process if so
         scenario_number = re.search('\_(.*)\.', file).group(1)
         idx = np.where(int(scenario_number) == model_info['orgScenarioNumber'])
-        if np.any(idx):
+        if idx[0].size > 0:
             idx = int(idx[0])
             print('Processing ' + file)
             
