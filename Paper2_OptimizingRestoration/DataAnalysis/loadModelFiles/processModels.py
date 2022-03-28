@@ -14,22 +14,24 @@ import analysisUtils
 from scipy import signal
 
 
-class processModels: 
+class processModels:
     def __init__(self, source_path, model_files, model_info):
         '''
-        CHANGE THIS HERE!
-        
         Processing utilities for OpenFOAM model output files. Note this script
         is designed to work with the Paper2_OptimizingRestoration model files only!
         
         Inputs:
             source_path: path of input file. Must be the base model folder (typically ".../ModelRuns/Scenarios/")
-            file_name: model folder name (typically "Scenario_XX")
-            wave_period: integer value for the wave period of each model (used to
-                         determine which processing step to run)
+            model_files: names of BIN files created by loadModelFiles.py in one list, and
+                        the index position of these files in the model_info CSV.
+            model_info: Data Frame containing CSV values from a data processing script.
             
         Outputs:
-            pandas array containing model freeSurface and field data saved in BIN format
+            wef, Ab, fer, ubr = computeWaveEnergy()
+                wef: Data Frame containing wave energy flux values for 10 wave gauges;
+                Ab: Wave orbital excursion at the bed [field scale, m]
+                fer: Wave friction factor (fe) [Dimensionless]
+                ubr: Near-bottom orbital velocity [field scale, m/s]
         '''
         
         # Load files
@@ -40,9 +42,9 @@ class processModels:
         free_surf = pickle.load(fid)
         
         # Basic wave characteristics
-        Tp = model_info['wavePeriod'][model_files[0]]
-        Hs = model_info['waveHeight'][model_files[0]]
-        h = model_info['waterDepth'][model_files[0]]
+        Tp = model_info['wavePeriod'][model_files[1]]
+        Hs = model_info['waveHeight'][model_files[1]]
+        h = model_info['waterDepth'][model_files[1]]
         gamma = Hs / h
         wavelength = (9.81 * (Tp**2)) / (2 * np.pi)
         steepness = Hs / wavelength
@@ -73,30 +75,45 @@ class processModels:
         F = []
         omegaj = []
         ubj = []
-        for gauge, data in free_surf.iteritems():
+        Hs_spec = []
+        np.seterr(divide='ignore', invalid='ignore')
+        for gauge, data in self.free_surf.iteritems():
             if gauge != 'TimeStep':
                 fs = 1 / 0.083  # sample frequency from models
                 f, Pxx_eta = signal.welch(data, fs, nperseg=round(len(data) / 4, 0))
-                kh = analysisUtils.qkhf(f, h)
-                c = np.sqrt(9.81 * np.tanh(kh[1:]) / np.sqrt(kh[1:] / h))
-                n = (1 / 2) * (1 + ((2 * kh[1:]) / (np.sinh(2 * kh[1:]))))
+                kh = analysisUtils.qkhf(f, self.h)
+                c = np.sqrt(9.81 * np.tanh(kh) / np.sqrt(kh / self.h))
+                n = (1 / 2) * (1 + ((2 * kh) / (np.sinh(2 * kh))))
                 cg = c * n  # Wave celerity
-                F.append(1025 * 9.81 * Pxx_eta[1:] * cg)  # Wave energy
+                cutoff = np.argmax(f >= 2)
+                Hs_spec.append(4 * np.sqrt(np.sum(Pxx_eta[1:cutoff] * np.mean(np.diff(f)))))
+                F.append(1025 * 9.81 * Pxx_eta[1:cutoff] * cg[1:cutoff])  # Wave energy
                 
                 # Estimate near-bottom orbital velocity with LWT
-                aj = np.sqrt(2 * Pxx_eta[1:])
-                omegaj.append(2 * np.pi * f[1:])
-                ubj.append((2 * Pxx_eta[1:] * 2 * np.pi * f[1:]) / np.sinh(kh[1:]))
+                omegaj.append(2 * np.pi * f[1:cutoff])
+                ubj.append((36 * 10 * 2 * Pxx_eta[1:cutoff] * 2 * np.pi * f[1:cutoff]) / np.sinh(kh[1:cutoff]))
+                # Note: 36 * 10 is the physical scaling * fudge factor for viscosity diff between
+                # the model and field scales.
                 
         # Mean wave energy dissipation
-        del_x = wave_gauges[-1] - wave_gauges[0]
+        del_x = self.wave_gauges[-1] - self.wave_gauges[0]
         ubr = np.sqrt(np.sum(ubj[-1])**2)
         omegar = np.sum(omegaj[-1] * (ubj[-1]**2)) / np.sum(ubj[-1]**2)
         Ab = ubr / omegar
         epsj = -1 * (F[-1] - F[0]) / del_x
         fej = (4 * epsj) / (1025 * ubr * ubj[-1]**2)
-        fer = np.sum(fej * ubj[-1]**2) / np.sum(ubj[-1]**2) ## I don't think this is right...
+        fer = np.sum(fej * ubj[-1]**2) / np.sum(ubj[-1]**2)
         
-        # SEE: Paper1_plotWaveDissipationFactorVsTp_V2_alt2
-        # Average TKE Dissipation in time
+        # Create data frame and return results
+        wgs = [f'WG{x}' for x in list(range(1, len(self.wave_gauges) + 1))]
+        wef = pd.DataFrame(dict(zip(wgs, F)))
+        wef.insert(loc=0, column='epsj', value=epsj)
+        wef.insert(loc=0, column='frequency', value=f[1:cutoff])
+        wef.loc['Hs'] = [np.nan, np.nan] + Hs_spec
+        
+        return wef, Ab, fer, ubr
+    
+    def avgTKE(self):
+        print('Averaging turbulence results...')
+        
         
