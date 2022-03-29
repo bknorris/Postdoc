@@ -56,5 +56,6 @@ for idx, scenario in enumerate(model_info['orgScenarioNumber']):
     model_files = [bin_files, idx]
     
     # Model post processing steps
+    # NEED TO ADD CANOPY PARAMS INTO CSV FILE!
     
     

@@ -12,6 +12,7 @@ import pickle
 import time
 import analysisUtils
 from scipy import signal
+from scipy import stats
 
 
 class processModels:
@@ -27,11 +28,27 @@ class processModels:
             model_info: Data Frame containing CSV values from a data processing script.
             
         Outputs:
-            wef, Ab, fer, ubr = computeWaveEnergy()
+            wef, Ab, fer, ubr = computeWaveEnergy():
                 wef: Data Frame containing wave energy flux values for 10 wave gauges;
                 Ab: Wave orbital excursion at the bed [field scale, m]
                 fer: Wave friction factor (fe) [Dimensionless]
                 ubr: Near-bottom orbital velocity [field scale, m/s]
+                
+            avg_fields = avgFields():
+                avg_fields: Contains the following x-z binned values:
+                    eps: TKE Dissipation Rate [m^2/s^3]
+                    Umag: Magnitude of U [field scale, m/s]
+                    k: TKE [m^2/s^2]
+                    xBins: 80 bins along the model x axis
+                    zBins: 20 bins along the model z axis
+                    
+            eps_norm = feddersenDissipation():
+                eps_norm: depth profile of surfzone normalized dissipation
+                          (see Eq. 9 of Fedderson, 2012)
+            
+            Lambda_not = hendersonDamping():
+                Lambda_not: Dimensionless damping parameter from
+                            Henderson et al. 2017
         '''
         
         # Load files
@@ -69,6 +86,7 @@ class processModels:
         self.wavelength = wavelength
         self.steepness = steepness
         self.wave_gauges = wave_gauges
+        self.ff = 170  # fudge factor to adjust velocities between model and field scale
     
     def computeWaveEnergy(self):
         print('Performing wave energy calculations...')
@@ -91,9 +109,7 @@ class processModels:
                 
                 # Estimate near-bottom orbital velocity with LWT
                 omegaj.append(2 * np.pi * f[1:cutoff])
-                ubj.append((36 * 10 * 2 * Pxx_eta[1:cutoff] * 2 * np.pi * f[1:cutoff]) / np.sinh(kh[1:cutoff]))
-                # Note: 36 * 10 is the physical scaling * fudge factor for viscosity diff between
-                # the model and field scales.
+                ubj.append((6 * self.ff * 2 * Pxx_eta[1:cutoff] * 2 * np.pi * f[1:cutoff]) / np.sinh(kh[1:cutoff]))
                 
         # Mean wave energy dissipation
         del_x = self.wave_gauges[-1] - self.wave_gauges[0]
@@ -113,7 +129,77 @@ class processModels:
         
         return wef, Ab, fer, ubr
     
-    def avgTKE(self):
-        print('Averaging turbulence results...')
+    def avgFields(self):
+        print('Averaging field data...')
+        x = self.fields['x'][0]
+        z = self.fields['z'][0]
         
+        # Bin epsilon along x and z
+        eps_avg = np.mean(self.fields['epsilon'])  # Avg. TKE dissipation in time
+        bins = stats.binned_statistic_2d(z, x, eps_avg, 'mean', bins=[20, 80])
+        epsg = bins.statistic  # Binned result
+        
+        # Bin Umag along x and z
+        Ux_avg = np.mean(self.fields['Ux'])
+        Uy_avg = np.mean(self.fields['Uy'])
+        Uz_avg = np.mean(self.fields['Uz'])
+        Umag_avg = np.sqrt(Ux_avg**2 + Uy_avg**2 + Uz_avg**2)
+        bins = stats.binned_statistic_2d(z, x, Umag_avg, 'mean', bins=[20, 80])
+        Umagg = 6 * self.ff * bins.statistic  # Binned result
+        
+        # Bin k along x and z
+        k_avg = np.mean(self.fields['k'])  # Avg. TKE dissipation in time
+        bins = stats.binned_statistic_2d(z, x, k_avg, 'mean', bins=[20, 80])
+        kg = bins.statistic  # Binned result
+        
+        # Create data frame and return results
+        avg_fields = pd.DataFrame()
+        avg_fields['eps'] = pd.Series(list(epsg))
+        avg_fields['Umag'] = pd.Series(list(Umagg))
+        avg_fields['k'] = pd.Series(list(kg))
+        avg_fields['xBins'] = pd.Series(list(bins.y_edge))
+        avg_fields['zBins'] = pd.Series(list(bins.x_edge))
+        
+        return avg_fields
+    
+    def feddersenDissipation(self, epsilon, dFdx):
+        '''
+        Calculate surf-zone averaged dissipation (Feddersen, 2012)
+        Inputs:
+            params: contained in 'self':
+                h: water depth
+            epsilon: averaged values from avgFields
+            dFdx: (integrated) wave energy flux across the model
+        
+        Outputs:
+            eps_norm: profile of normalized dissipation; e.g., eps_norm(z)
+        '''
+        eps_norm = np.mean(epsilon, axis=1) / (self.h**-1 * dFdx)
+        
+        return eps_norm
+    
+    def hendersonDamping(self, ubr):
+        '''
+        Calculate Henderson dimensionless damping parameter Lambda
+        (Henderson et al. 2017)
+        
+        Inputs:
+            params: contained in 'self':
+                a: frontal area density of canopy
+                Tw: wave period
+                h: water depth
+                hc: canopy height
+            ubr: near-bottom wave orbital velocity
+        
+        Outputs:
+            Lambda_not: Henderson damping parameter
+        '''
+        # Estimate the drag coefficient (Lentz et al. 2017)
+        kappa = 0.4  # Von Karman's constant
+        Pi = 0.2  # Cole's wake strength
+        z_not = self.hc / self.h
+        Cd = kappa**2 * (np.log(self.h / z_not) + (Pi - 1))**-2
+        Lambda_not = (Cd * self.a * ubr * self.Tp) / (4 * np.pi)
+        
+        return Lambda_not
         

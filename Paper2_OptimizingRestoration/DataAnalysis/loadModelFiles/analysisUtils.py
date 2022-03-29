@@ -10,7 +10,7 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.colors import ListedColormap
-
+from itertools import product
 
 def read_model_file(file_path):
     # Read model data file and skip headerlines commented with "#"
@@ -67,9 +67,8 @@ def runningmean(a, n):
                        'same') / np.convolve(np.ones(len(a)), np.ones(n), 'same')
 
 
-def accumarray(subs, val):
-    df = pd.DataFrame({"y": val, "x": subs})
-    return pd.pivot_table(df, values='y', index='x', aggfunc='mean')
+def sub2ind(array_shape, rows, cols):
+    return rows * array_shape[1] + cols
 
 
 def qkhf(w, h):
@@ -129,5 +128,19 @@ def quick_plot(x, y, z, value, labels=['x', 'y', 'z']):
     
     # legend
     plt.legend(*sc.legend_elements(), bbox_to_anchor=(1.05, 1), loc=2)
+
+    
+def imagesc(x, y, image, fig_size=(6, 4), caxis=None, c_map='viridis'):
+    if(caxis is None):
+        caxis = [np.min(image), np.max(image)]
+        
+    def extents(f):
+        delta = f[1] - f[0]
+        return [f[0] - delta / 2, f[-1] + delta / 2]
+    fig = plt.figure(figsize=fig_size)
+    ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
+    axes = ax.imshow(image, aspect='auto', extent=extents(x) + extents(y),
+                     vmin=caxis[0], vmax=caxis[1], origin='lower', cmap=c_map)
+    plt.colorbar(axes)
 
     
