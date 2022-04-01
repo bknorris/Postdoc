@@ -31,7 +31,7 @@ from pathlib import Path
 model_source = Path('h:/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/rawResults')
 model_dest = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/')
 save_data_path = str(model_dest) + "\\postProcessed\\"
-model_info = 'adjustModelSampling_TEST.csv'
+model_info = 'modelPostProcessing_TEST2.csv'
 
 # Begin program
 # 1. Load CSV
@@ -47,7 +47,7 @@ filenames = next(os.walk(str(model_source)))[2]  # For later, [1] is dirs and [2
 # 3. Load files in model_source directory
 #t1 = time.time()
 for idx, scenario in enumerate(model_info['orgScenarioNumber']):
-    #t2 = time.time()
+    t2 = time.time()
     print(f'Loading file {idx+1} of {len(model_info)}: Scenario_{scenario}\n')
     
     # Get the scenarios from the CSV file in the model directory
@@ -56,6 +56,14 @@ for idx, scenario in enumerate(model_info['orgScenarioNumber']):
     model_files = [bin_files, idx]
     
     # Model post processing steps
-    # NEED TO ADD CANOPY PARAMS INTO CSV FILE!
+    model = processModels.processModels(model_source, model_files, model_info)
+    wef, Ab, fer, ubr = model.computeWaveEnergy()
+    avg_fields = model.avgFields()
+    eps_norm = model.feddersenDissipation(avg_fields['eps'], wef['epsj'][:-1])
+    Lambda_not = model.hendersonDamping(ubr)
     
+    # Append data to lists, dicts for each scenario?
+    # Print elapsed time
+    executionTime = (time.time() - t2) / 60
+    print(f'Data processed in: {executionTime:.2f} minutes')
     

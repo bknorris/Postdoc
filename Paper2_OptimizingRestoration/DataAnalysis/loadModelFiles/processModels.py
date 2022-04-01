@@ -9,7 +9,6 @@ BKN - USGS PCMSC 2022
 import pandas as pd
 import numpy as np
 import pickle
-import time
 import analysisUtils
 from scipy import signal
 from scipy import stats
@@ -66,6 +65,11 @@ class processModels:
         wavelength = (9.81 * (Tp**2)) / (2 * np.pi)
         steepness = Hs / wavelength
         
+        # Canopy characteristics
+        d = model_info['d'][model_files[1]]
+        hc = model_info['hc'][model_files[1]]
+        deltaS = model_info['deltaS'][model_files[1]]
+        
         # Define wave gauges
         if Tp == 5:
             x_bnd = (0, 2.6)  # lower/upper
@@ -82,12 +86,15 @@ class processModels:
         self.Tp = Tp
         self.Hs = Hs
         self.h = h
+        self.d = d
+        self.hc = hc
+        self.deltaS = deltaS
         self.gamma = gamma
         self.wavelength = wavelength
         self.steepness = steepness
         self.wave_gauges = wave_gauges
         self.ff = 170  # fudge factor to adjust velocities between model and field scale
-    
+        
     def computeWaveEnergy(self):
         print('Performing wave energy calculations...')
         F = []
@@ -157,24 +164,32 @@ class processModels:
         avg_fields['eps'] = pd.Series(list(epsg))
         avg_fields['Umag'] = pd.Series(list(Umagg))
         avg_fields['k'] = pd.Series(list(kg))
-        avg_fields['xBins'] = pd.Series(list(bins.y_edge))
-        avg_fields['zBins'] = pd.Series(list(bins.x_edge))
+        
+        # The x and z bins need some prep... this code reshapes them into (20, 80) arrays.
+        xBins = np.tile(bins.y_edge[:-1].reshape(-1, 80), (20, 1))
+        zBins = np.tile(bins.x_edge[:-1].reshape(-1, 20), (80, 1))
+        avg_fields['xBins'] = pd.Series(list(xBins))
+        avg_fields['zBins'] = pd.Series(list(zBins))
         
         return avg_fields
     
-    def feddersenDissipation(self, epsilon, dFdx):
+        # NOTE: to 'reconstruct' avg_fields values, a series of lists -> array,
+        # use np.stack(), e.g. np.stack(avg_fields['eps'])
+    
+    def feddersenDissipation(self, epsilon, epsj):
         '''
         Calculate surf-zone averaged dissipation (Feddersen, 2012)
         Inputs:
             params: contained in 'self':
                 h: water depth
-            epsilon: averaged values from avgFields
-            dFdx: (integrated) wave energy flux across the model
+            epsilon: averaged values from avgFields (as a series of lists)
+            epsj: wave energy flux across the model (remember to use [:-1])
         
         Outputs:
             eps_norm: profile of normalized dissipation; e.g., eps_norm(z)
         '''
-        eps_norm = np.mean(epsilon, axis=1) / (self.h**-1 * dFdx)
+        dFdx = np.trapz(epsj)
+        eps_norm = [np.mean(epsilon[x]) / (self.h**-1 * dFdx) for x in range(len(epsilon))]
         
         return eps_norm
     
@@ -185,7 +200,8 @@ class processModels:
         
         Inputs:
             params: contained in 'self':
-                a: frontal area density of canopy
+                d: mean diameter of objects in flow
+                deltaS: mean object spacing
                 Tw: wave period
                 h: water depth
                 hc: canopy height
@@ -195,11 +211,12 @@ class processModels:
             Lambda_not: Henderson damping parameter
         '''
         # Estimate the drag coefficient (Lentz et al. 2017)
+        a = self.d / (self.deltaS**2)
         kappa = 0.4  # Von Karman's constant
         Pi = 0.2  # Cole's wake strength
         z_not = self.hc / self.h
         Cd = kappa**2 * (np.log(self.h / z_not) + (Pi - 1))**-2
-        Lambda_not = (Cd * self.a * ubr * self.Tp) / (4 * np.pi)
+        Lambda_not = (Cd * a * ubr * self.Tp) / (4 * np.pi)
         
         return Lambda_not
         
