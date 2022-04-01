@@ -31,7 +31,7 @@ from pathlib import Path
 model_source = Path('h:/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/rawResults')
 model_dest = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/')
 save_data_path = str(model_dest) + "\\postProcessed\\"
-model_info = 'modelPostProcessing_TEST2.csv'
+model_info = 'modelPostProcessing_TEST3.csv'
 
 # Begin program
 # 1. Load CSV
@@ -45,10 +45,10 @@ model_info = pd.read_csv(csv_file.open())
 filenames = next(os.walk(str(model_source)))[2]  # For later, [1] is dirs and [2] is files
 
 # 3. Load files in model_source directory
-#t1 = time.time()
+t1 = time.time()
 for idx, scenario in enumerate(model_info['orgScenarioNumber']):
     t2 = time.time()
-    print(f'Loading file {idx+1} of {len(model_info)}: Scenario_{scenario}\n')
+    print(f'Loading file {idx+1} of {len(model_info)}: Scenario_{scenario}')
     
     # Get the scenarios from the CSV file in the model directory
     regex = re.compile('Scenario_' + str(scenario) + '_.*')
@@ -63,7 +63,16 @@ for idx, scenario in enumerate(model_info['orgScenarioNumber']):
     Lambda_not = model.hendersonDamping(ubr)
     
     # Append data to lists, dicts for each scenario?
+    if idx == 0:
+        wef_dict = dict()
+        wef_dict[str(scenario)] = wef
+    else:
+        wef_dict[str(scenario)] = wef
+    
     # Print elapsed time
     executionTime = (time.time() - t2) / 60
-    print(f'Data processed in: {executionTime:.2f} minutes')
-    
+    print(f'Completed in: {executionTime:.2f} minutes\n')
+
+# Print elapsed time
+executionTime = (time.time() - t1) / 60
+print(f'Data processed in: {executionTime:.2f} minutes')
