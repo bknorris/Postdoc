@@ -23,15 +23,18 @@ import os
 import re
 import pandas as pd
 import time
+import pickle
 import processModels
 from pathlib import Path
 
+version_no = 'V1'  # file version; appends to model save file
+comment = '5s_10s'  # Output file comment
 
 # Define file paths:
 model_source = Path('h:/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/rawResults')
 model_dest = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/')
 save_data_path = str(model_dest) + "\\postProcessed\\"
-model_info = 'modelPostProcessing_TEST3.csv'
+model_info = 'modelPostProcessing.csv'
 
 # Begin program
 # 1. Load CSV
@@ -61,17 +64,46 @@ for idx, scenario in enumerate(model_info['orgScenarioNumber']):
     avg_fields = model.avgFields()
     eps_norm = model.feddersenDissipation(avg_fields['eps'], wef['epsj'][:-1])
     Lambda_not = model.hendersonDamping(ubr)
+    calc_values = {'Ab': Ab, 'fer': fer, 'ubr': ubr, 'lambda_not': Lambda_not}
     
-    # Append data to lists, dicts for each scenario?
+    # Append data to dicts for each scenario num
     if idx == 0:
-        wef_dict = dict()
+        wef_dict = dict()  # WEF values
+        avf_dict = dict()  # avg_fields values
+        epn_dict = dict()  # eps_norm values
+        cal_dict = dict()  # other values
         wef_dict[str(scenario)] = wef
+        avf_dict[str(scenario)] = avg_fields
+        epn_dict[str(scenario)] = eps_norm
+        cal_dict[str(scenario)] = calc_values
     else:
         wef_dict[str(scenario)] = wef
+        avf_dict[str(scenario)] = avg_fields
+        epn_dict[str(scenario)] = eps_norm
+        cal_dict[str(scenario)] = calc_values
     
     # Print elapsed time
     executionTime = (time.time() - t2) / 60
     print(f'Completed in: {executionTime:.2f} minutes\n')
+
+# Save data to file
+print('Saving processed data...')
+data = {'wef': wef_dict, 'avg_fields': avf_dict, 'eps_norm': epn_dict, 'calc_values': cal_dict}
+save_file = False
+output_file = 'modelPostProcessing_' + comment + '_' + version_no + ".dat"
+if os.path.isfile(save_data_path + output_file):
+    print('File already exists in destination directory!')
+    result = input('Overwrite? (y/n) ')
+    if result == 'y':
+        save_file = True
+        
+else:
+    save_file = True
+    
+if save_file:
+    file_obj = open(save_data_path + output_file, mode='wb')
+    pickle.dump(data, file_obj)
+    file_obj.close()
 
 # Print elapsed time
 executionTime = (time.time() - t1) / 60
