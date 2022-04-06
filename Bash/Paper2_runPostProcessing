@@ -1,0 +1,32 @@
+#!/bin/bash
+# cd "${0%/*}" || exit                                # Run from this directory
+. ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions          # OF Tutorial run functions
+#------------------------------------------------------------------------------
+
+# Change these file paths!
+source="/mnt/h/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/"
+dest="/mnt/c/Users/user/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/"
+
+curdir=$(pwd)
+cd $source
+EXCEPT=""Scenario_1"|"Scenario_10"" #list of folders to exclude from processing
+for f in */; do #for all directories (*/) in $source..
+	filename=$(basename "$f") #get the directory name 
+	[[ $filename == @($EXCEPT) ]] && continue
+	echo "Processing $f"
+
+	# Unzip model file from source and save to dest
+	7z x "$source$filename.zip" -o$dest$filename
+
+	# Check to see if a ZipFile folder exists in the source
+	if ! test -d $source"ZipFile"; then #check to see if the filename.zip exists in $dest
+		echo "No ZipFile folder exists in the source directory!"
+		mkdir $source"ZipFile"
+	else
+		echo "ZipFile folder already exists in the source directory."
+	fi
+
+	# Run OF postProcessing routine
+
+done
+cd $curdir
