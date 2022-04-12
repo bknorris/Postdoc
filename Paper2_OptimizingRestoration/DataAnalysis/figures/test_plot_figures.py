@@ -6,17 +6,21 @@ Created on Mon Apr  4 12:47:43 2022
 """
 
 import pickle
+import matplotlib
 import matplotlib.pyplot as plt
-from mycolorpy import colorlist as mcp
 import numpy as np
 import pandas as pd
 from pathlib import Path
 
+plt.close('all')
+
 # Define file paths:
 csv_source = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/')
 model_source = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/postProcessed')
+save_fig_dir = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/Figures')
 csv_file = 'modelPostProcessing.csv'
 data_file = 'modelPostProcessing_5s_10s_V1.dat'
+save_figures = True
 
 # Load binary results file
 file = open(model_source / data_file, 'rb')
@@ -32,9 +36,9 @@ five = np.where(model_info.wavePeriod == 5)[0].tolist()
 ten = np.where(model_info.wavePeriod == 10)[0].tolist()
 
 # Figures:
-# Hs/Hs0 vs x (colored by Tp)
+# Hs/Hs0 vs x (colored by Hs/deltaS)
 plt.style.use('_mpl-gallery')
-f1 = plt.figure(figsize=(6.5, 6.5))
+f1 = plt.figure(figsize=(10, 6.5))
 axes = f1.add_axes([0.12, 0.1, 0.8, 0.8])
 
 # Plot 5 s waves first
@@ -53,22 +57,131 @@ wave_unq = np.unique(waveHeight)
 spacing = model_info.deltaS[five].tolist()
 spce_unq = np.unique(spacing)
 
-cmap = mcp.gen_color(cmap="Set1", n=3)
-markers = ['o', 's', '^', 'd', 'p']
+# Colormaps from ColorBrewer
+BuGn = ['#ccece6', '#99d8c9', '#66c2a4', '#41ae76', '#238b45']
+OrRd = ['#fdd49e', '#fdbb84', '#fc8d59', '#ef6548', '#d7301f']
+PuBu = ['#d0d1e6', '#a6bddb', '#74a9cf', '#3690c0', '#0570b0']
+cmap = [BuGn, OrRd, PuBu]
+
+# Marker spec
+markers = ['o', '^', 's', 'd', 'P']
+size = np.arange(6, 11, 1)
+xs = np.linspace(-0.025, 0.025, 5)
+
 for i in range(0, len(wave_unq)):
     for j in range(0, len(spce_unq)):
         ys = np.intersect1d(y[waveHeight == wave_unq[i]], y[spacing == spce_unq[j]])
-        scaled = spce_unq[j]*36
-        leg = f'$\Delta S: {scaled:.3f}$'
-        plt.plot(x, ys, color=cmap[i], marker=markers[j], label=leg)
+        x_scaled = spce_unq[j] * 36
+        leg = f'$\Delta S = {x_scaled:.1f}$'
+        plt.plot(x[:-1] + xs[j], ys[:-1], color=cmap[i][j],
+                 marker=markers[j],
+                 markersize=size[j],
+                 label=leg)
 
-# axes.invert_xaxis()
+# Multiple legend titles
+handles, labels = axes.get_legend_handles_labels()
+leg1 = axes.legend(handles[:5], labels[:5], loc=(0.01, 0),
+                   frameon=False,
+                   title=r'$H_s = \mathrm{0.05 \ m}$')
+title = leg1.get_title()
+title.set_size(12)
+title.set_weight("bold")
+
+leg2 = axes.legend(handles[5:10], labels[5:10], loc=(0.18, 0),
+                   frameon=False,
+                   title=r'$H_s = \mathrm{0.15 \ m}$')
+title = leg2.get_title()
+title.set_size(12)
+title.set_weight("bold")
+
+leg3 = axes.legend(handles[10:15], labels[10:15], loc=(0.35, 0),
+                   frameon=False,
+                   title=r'$H_s = \mathrm{0.30 \ m}$')
+title = leg3.get_title()
+title.set_size(12)
+title.set_weight("bold")
+
+axes.add_artist(leg1)
+axes.add_artist(leg2)
+
+# Add legend bounding box
+axes.add_patch(matplotlib.patches.Rectangle((0.01, 0.5525), 0.505, 0.119,
+               edgecolor='black',
+               facecolor='white',
+               lw=1))
+
+# Plot Adjustments
 axes.set_xlabel(r'$x/x_0 \mathrm{(m)}$')
-axes.set_ylabel(r'$H_s/H_{s_0}$')    
-plt.legend()
+axes.set_ylabel(r'$H_s/H_{s_0}$')
+axes.set_title(r'$T_w = \mathrm{30 \ s \ Models}$')
+plt.xlim(0, 1.05)
+plt.ylim(0.55, 1)
 
+# Save figure
+if save_figures:
+    fname = 'HsNorm_vs_x_Tw_5s.png'
+    plt.savefig(save_fig_dir / fname, dpi=300, format=None, metadata=None,
+                bbox_inches=None, pad_inches=0.1,
+                facecolor='auto', edgecolor='auto',
+                backend=None)
   
-# delF/delx vs x (colored by Tp)
+    
+# eps_norm vs deltaS (colored by Hs/deltaS)
+plt.style.use('_mpl-gallery')
+f2 = plt.figure(figsize=(5, 4))
+axes = f2.add_axes([0.175, 0.12, 0.8, 0.8])
+
+# Plot 5 s waves first
+scenario = model_info.orgScenarioNumber[five].tolist()
+scenario = [str(x) for x in scenario]
+WEF = []
+for index in scenario:
+    wave = data['eps_norm'][index][:-1]
+    WEF.append(np.max(wave))
+    
+x = model_info.deltaS[five] * 36
+y = np.array(WEF)
+waveHeight = model_info.waveHeight[five].tolist()
+wave_unq = np.unique(waveHeight)
+spacing = model_info.deltaS[five].tolist()
+spce_unq = np.unique(spacing)
+
+# Colormaps from ColorBrewer
+BuGn = ['#ccece6', '#99d8c9', '#66c2a4', '#41ae76', '#238b45']
+OrRd = ['#fdd49e', '#fdbb84', '#fc8d59', '#ef6548', '#d7301f']
+PuBu = ['#d0d1e6', '#a6bddb', '#74a9cf', '#3690c0', '#0570b0']
+cmap = [BuGn, OrRd, PuBu]
+
+# Marker spec
+markers = ['o', '^', 's', 'd', 'P']
+
+# Plot
+for i in range(0, len(wave_unq)):
+    for j in range(0, len(spce_unq)):
+        ys = np.intersect1d(y[waveHeight == wave_unq[i]], y[spacing == spce_unq[j]])
+        xs = np.intersect1d(x[waveHeight == wave_unq[i]], x[spacing == spce_unq[j]])
+        leg = f'$\Delta S = {x_scaled:.1f}$'
+        plt.semilogy(xs, ys, color=cmap[i][j],
+                     marker=markers[j],
+                     markersize=8,
+                     label=leg)
+
+# Plot Adjustments
+axes.set_ylabel(r'$\epsilon \left/ (g^3h)^{1/2} \right.$')
+axes.set_xlabel(r'$\Delta S \ \mathrm{(m)}$')
+axes.set_title(r'$T_w = \mathrm{30 \ s \ Models}$')
+plt.ylim(1e-3, 5e-3)
+plt.xlim(0.55, 1.45)
+plt.yticks(np.linspace(1e-3, 5e-3, 5))
+
+# Save figure
+if save_figures:
+    fname = 'Eps_norm_vs_deltaS_Tw_5s.png'
+    plt.savefig(save_fig_dir / fname, dpi=300, format=None, metadata=None,
+                bbox_inches=None, pad_inches=0.1,
+                facecolor='auto', edgecolor='auto',
+                backend=None)
+
 # Eps_norm(z) vs Z (colored by TP)
 # max(Eps_norm) vs Tp
 # Runup at shore vs Tp
