@@ -19,8 +19,8 @@ csv_source = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestorati
 model_source = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/postProcessed')
 save_fig_dir = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/Figures')
 csv_file = 'modelPostProcessing.csv'
-data_file = 'modelPostProcessing_5s_10s_V1.dat'
-save_figures = False
+data_file = 'modelPostProcessing_5s_10s_V2.dat'
+save_figures = True
 
 # Load binary results file
 file = open(model_source / data_file, 'rb')
@@ -183,7 +183,7 @@ if save_figures:
                 backend=None)
 
 
-# Eps_norm(z) vs Z (colored by deltaS)
+# Eps_norm(z) vs Z (colored by Hs & deltaS)
 plt.style.use('_mpl-gallery')
 f3 = plt.figure(figsize=(10, 6.5))
 axes1 = f3.add_axes([0.1, 0.1, 0.25, 0.8])
@@ -221,9 +221,9 @@ for i in range(0, len(wave_unq)):
         x_scaled = spce_unq[j] * 36
         leg = f'$\Delta S = {x_scaled:.1f}$'
         ax[i].plot(x, y, color=cmap[i][j],
-                 marker=markers[j],
-                 markersize=6,
-                 label=leg)
+                   marker=markers[j],
+                   markersize=6,
+                   label=leg)
     
     count += 1
     
@@ -232,7 +232,7 @@ axes1.set_ylim(-1.1, 0)
 axes1.set_xlim(-1e-4, 5e-3)
 axes1.set_xticks(np.linspace(1e-3, 5e-3, 3))
 axes1.legend(loc='upper right', frameon=True, framealpha=1)
-axes1.set_title(r'$T_w = \ \mathrm{0.05 m}$')
+axes1.set_title(r'$H_s = \ \mathrm{0.05 \ m}$')
 axes1.set_ylabel('Depth (m)')
 axes1.set_xlabel(r'$\epsilon \left/ (g^3h)^{1/2} \right.$')
 
@@ -240,7 +240,7 @@ axes2.set_ylim(-1.1, 0)
 axes2.set_xlim(-1e-4, 5e-3)
 axes2.set_xticks(np.linspace(1e-3, 5e-3, 3))
 axes2.legend(loc='upper right')
-axes2.set_title(r'$T_w = \ \mathrm{0.15 m}$')
+axes2.set_title(r'$H_s = \ \mathrm{0.15 \ m}$')
 axes2.yaxis.set_ticklabels([])
 axes2.set_xlabel(r'$\epsilon \left/ (g^3h)^{1/2} \right.$')
 
@@ -248,7 +248,7 @@ axes3.set_ylim(-1.1, 0)
 axes3.set_xlim(-1e-4, 5e-3)
 axes3.set_xticks(np.linspace(1e-3, 5e-3, 3))
 axes3.legend(loc='upper right')
-axes3.set_title(r'$T_w = \ \mathrm{0.30 m}$')
+axes3.set_title(r'$H_s = \ \mathrm{0.30 \ m}$')
 axes3.yaxis.set_ticklabels([])
 axes3.set_xlabel(r'$\epsilon \left/ (g^3h)^{1/2} \right.$')
 
