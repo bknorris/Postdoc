@@ -1,40 +1,33 @@
 # -*- coding: utf-8 -*-
 """
-Load and post process the RAW model data created by main_loading_script.py
-and its dependencies. This script (and dependencies) creates reduced-size
-data files to simplify figure making. This script computes key variables:
-    
-Total wave energy dissipation between the model inlet and patch;
-Total mean TKE dissipation rate;
-Gamma: wave breaking parameter;
-Wavelength; and
-Wave steepness.
+Load and process Paper2_OptimizingRestoration model data
+from the postProcessing folders in each model folder and
+save the data out to disk. This script combines functionality
+from main_loading_script.py and main_processing_script.py
+as some of the model RAW files are too large.
 
-TKE dissipation rate is binned (averaged) along the x-z axes into 100 bins to
-reduce storage space.
-
-This script is a "Pythonic" version of a MATLAB script I wrote
-last year.
 
 BKN - USGS PCMSC 2022
 """
-
 import os
 import re
-import pandas as pd
 import time
+import zipfile
+import shutil
 import pickle
+import pandas as pd
+import loadModelFiles
 import processModels
 from pathlib import Path
 
 version_no = 'V2'  # file version; appends to model save file
-comment = '5s_10s'  # Output file comment
+comment = 'Tw_5_10_20s'  # Output file comment
 
 # Define file paths:
-model_source = Path('e:/BKN-FIELD/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/DataAnalysis/')
+model_source = Path('e:/BKN-FIELD/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/Reprocessed/')
 model_dest = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/')
 save_data_path = str(model_dest) + "\\postProcessed\\"
-model_info = 'modelPostProcessing.csv'
+model_info = 'modelPostProcessing_TEST.csv'
 
 # Begin program
 # 1. Load CSV
@@ -54,17 +47,35 @@ for idx, scenario in enumerate(model_info['orgScenarioNumber']):
     print(f'Loading file {idx+1} of {len(model_info)}: Scenario_{scenario}')
     
     # Get the scenarios from the CSV file in the model directory
-    regex = re.compile('Scenario_' + str(scenario) + '_.*')
-    bin_files = list(filter(regex.match, filenames))
-    model_files = [bin_files, idx]
+    regex = re.compile('Scenario_' + str(scenario) + '.zip')
+    file = list(filter(regex.match, filenames))
+         
+    # Unzip model file to model_source
+    print('Unzipping file from source directory...')
+    model_name = file[0].split('.')[0]  # model folder without extension
+    with zipfile.ZipFile(str(model_source / file[0]), 'r') as zip_file:
+        zip_file.extractall(str(model_dest / model_name))
+    
+    # Run loading functions on model files
+    model_load = loadModelFiles.loadModelFiles(str(model_dest), model_name, model_info['wavePeriod'][idx])
+    timestep = model_load.createTimestep()
+    freeSurf = model_load.loadFreeSurface(timestep)
+    fields = model_load.loadFields(timestep)
     
     # Model post processing steps
-    model = processModels.processModels(model_source, model_files, model_info)
-    wef, Ab, fer, ubr = model.computeWaveEnergy()
-    avg_fields = model.avgFields()
-    eps_norm = model.feddersenDissipation(avg_fields['eps'], wef['epsj'][:-1])
-    Lambda_not = model.hendersonDamping(ubr)
+    model_pprocess = processModels.processModels(model_source, fields, freeSurf, model_info, idx)
+    wef, Ab, fer, ubr = model_pprocess.computeWaveEnergy()
+    avg_fields = model_pprocess.avgFields()
+    eps_norm = model_pprocess.feddersenDissipation(avg_fields['eps'], wef['epsj'][:-1])
+    Lambda_not = model_pprocess.hendersonDamping(ubr)
     calc_values = {'Ab': Ab, 'fer': fer, 'ubr': ubr, 'lambda_not': Lambda_not}
+    
+    # Save out binary files to disk
+    model_load.saveData(freeSurf, 'freeSurf', save_data_path, version_no)
+    model_load.saveData(wef, 'WEF', save_data_path, version_no)
+    model_load.saveData(avg_fields, 'AVG-FIELDS', save_data_path, version_no)
+    model_load.saveData(eps_norm, 'EPS-NORM', save_data_path, version_no)
+    model_load.saveData(calc_values, 'CALC-VALUES', save_data_path, version_no)
     
     # Append data to dicts for each scenario num
     if idx == 0:
@@ -81,11 +92,17 @@ for idx, scenario in enumerate(model_info['orgScenarioNumber']):
         avf_dict[str(scenario)] = avg_fields
         epn_dict[str(scenario)] = eps_norm
         cal_dict[str(scenario)] = calc_values
+        
+    # Clear memory, remove model folder on disk to preserve space
+    print('Removing model folder from dest directory...')
+    del model_load, model_pprocess, timestep, freeSurf, fields
+    full_path = str(model_dest / model_name)
+    shutil.rmtree(full_path)
     
     # Print elapsed time
     executionTime = (time.time() - t2) / 60
     print(f'Completed in: {executionTime:.2f} minutes\n')
-
+    
 # Save data to file
 print('Saving processed data...')
 data = {'wef': wef_dict, 'avg_fields': avf_dict, 'eps_norm': epn_dict, 'calc_values': cal_dict}

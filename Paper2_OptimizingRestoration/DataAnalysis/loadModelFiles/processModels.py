@@ -15,15 +15,16 @@ from scipy import stats
 
 
 class processModels:
-    def __init__(self, source_path, model_files, model_info):
+    def __init__(self, source_path, fields, free_surf, model_info, idx):
         '''
         Processing utilities for OpenFOAM model output files. Note this script
         is designed to work with the Paper2_OptimizingRestoration model files only!
         
         Inputs:
             source_path: path of input file. Must be the base model folder (typically ".../ModelRuns/Scenarios/")
-            model_files: names of BIN files created by loadModelFiles.py in one list, and
-                        the index position of these files in the model_info CSV.
+            fields: field data from the RAW OpenFOAM output; "Scenario_#/Model/postProcessing/bathySample.."
+            free_surf: free surface data from the RAW OpenFOAM output; "Scenario_#/Model/postProcessing/freeSurface.."
+            idx: index corresponding to the model scenario in model_info
             model_info: Data Frame containing CSV values from a data processing script.
             
         Outputs:
@@ -50,25 +51,18 @@ class processModels:
                             Henderson et al. 2017
         '''
         
-        # Load files
-        print('Loading model files...')
-        fid = open(source_path / model_files[0][0], mode='rb')
-        fields = pickle.load(fid)
-        fid = open(source_path / model_files[0][1], mode='rb')
-        free_surf = pickle.load(fid)
-        
         # Basic wave characteristics
-        Tp = model_info['wavePeriod'][model_files[1]]
-        Hs = model_info['waveHeight'][model_files[1]]
-        h = model_info['waterDepth'][model_files[1]]
+        Tp = model_info['wavePeriod'][idx]
+        Hs = model_info['waveHeight'][idx]
+        h = model_info['waterDepth'][idx]
         gamma = Hs / h
         wavelength = (9.81 * (Tp**2)) / (2 * np.pi)
         steepness = Hs / wavelength
         
         # Canopy characteristics
-        d = model_info['d'][model_files[1]]
-        hc = model_info['hc'][model_files[1]]
-        deltaS = model_info['deltaS'][model_files[1]]
+        d = model_info['d'][idx]
+        hc = model_info['hc'][idx]
+        deltaS = model_info['deltaS'][idx]
         
         # Define wave gauges
         if Tp == 5:

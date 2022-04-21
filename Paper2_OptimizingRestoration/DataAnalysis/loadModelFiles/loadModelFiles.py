@@ -49,13 +49,16 @@ class loadModelFiles:
         i.e., Scenario_#/Scenario_#/...
         Catch these exceptions.
         '''
-        full_path = source_path + "\\" + model_name + "\\Model\\postProcessing\\freeSurface\\"
-        folders = next(os.walk(full_path), (None, None, []))[1]
+        surf_path = source_path + "\\" + model_name + "\\Model\\postProcessing\\freeSurface\\"
+        bathy_path = source_path + "\\" + model_name + "\\Model\\postProcessing\\bathySample\\surface\\"
+        folders = next(os.walk(surf_path), (None, None, []))[1]
         if folders is None:
-            full_path = source_path + "\\" + model_name + "\\" + model_name + "\\Model\\postProcessing\\freeSurface\\"
-            folders = next(os.walk(full_path), (None, None, []))[1]
+            surf_path = source_path + "\\" + model_name + "\\" + model_name + "\\Model\\postProcessing\\freeSurface\\"
+            bathy_path = source_path + "\\" + model_name + "\\" + model_name + "\\Model\\postProcessing\\bathySample\\surface\\"
+            folders = next(os.walk(surf_path), (None, None, []))[1]
             
-        self.source_path = source_path
+        self.surf_path = surf_path
+        self.bathy_path = bathy_path
         self.model_name = model_name
         self.model_folders = folders[1:]  # ignore first directory (is 0 time)
         self.x_bnd = x_bnd
@@ -71,13 +74,10 @@ class loadModelFiles:
         # Set timer
         startTime = time()
         
-        # Redefine full_path for freeSurface postProcessing folder
-        surf_path = self.source_path + "\\" + self.model_name + "\\Model\\postProcessing\\freeSurface\\"
-        
         print('Loading model free surface data...')
         output = []
         for folder in self.model_folders:
-            full_path = surf_path + folder + "\\"
+            full_path = self.surf_path + folder + "\\"
             file = next(os.walk(full_path))[2]
             file_text = analysisUtils.read_model_file(full_path + file[0])
             
@@ -113,14 +113,11 @@ class loadModelFiles:
         # Set timer
         startTime = time()
 
-        # Redefine full_path for bathySample postProcessing folder
-        bathy_path = self.source_path + "\\" + self.model_name + "\\Model\\postProcessing\\bathySample\\surface\\"
-        
         # Load the field data
         print('Loading model field data...')
         output = []
         for folder in self.model_folders:
-            full_path = bathy_path + folder + "\\"
+            full_path = self.bathy_path + folder + "\\"
             file = next(os.walk(full_path))[2]
             
             # Read in text files
@@ -180,7 +177,7 @@ class loadModelFiles:
         
         print('Saving ' + kind + ' file...')
         save_file = False
-        output_file = self.model_name + "_" + kind + "_RAWfile_" + version + ".dat"
+        output_file = self.model_name + "_" + kind + "_" + version + ".dat"
         if os.path.isfile(file_path + output_file):
             print('File already exists in destination directory!')
             result = input('Overwrite? (y/n) ')
@@ -194,4 +191,3 @@ class loadModelFiles:
             file_obj = open(file_path + output_file, mode='wb')
             pickle.dump(data, file_obj)
             file_obj.close()
-        
