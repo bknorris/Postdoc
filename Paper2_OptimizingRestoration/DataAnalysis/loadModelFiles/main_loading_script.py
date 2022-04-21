@@ -22,10 +22,10 @@ from pathlib import Path
 version_no = 'V1'  # file version; appends to model save file
 
 # Define file paths:
-model_source = Path('g:/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/')
-model_dest = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/')
-save_data_path = str(model_dest) + "\\DataAnalysis\\"
-model_info = 'adjustModelSampling_RESTART3.csv'
+model_source = Path('e:/BKN-FIELD/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/Reprocessed/')
+model_dest = Path('h:/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/')
+save_data_path = str(model_dest) + "\\rawResults\\"
+model_info = 'adjustModelSampling_RESTART5_TEST.csv'
 
 # Begin program
 # 1. Load CSV

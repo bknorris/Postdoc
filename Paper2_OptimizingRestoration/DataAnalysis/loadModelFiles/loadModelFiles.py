@@ -44,9 +44,17 @@ class loadModelFiles:
         wave_gauges = np.linspace(x_bnd[0], x_bnd[1], 10)  # 10 evenly spaced WGs
         
         # Get the model folders from postProcessing
+        '''
+        Update 4/21/22: Sometimes the folders were zipped recursively,
+        i.e., Scenario_#/Scenario_#/...
+        Catch these exceptions.
+        '''
         full_path = source_path + "\\" + model_name + "\\Model\\postProcessing\\freeSurface\\"
         folders = next(os.walk(full_path), (None, None, []))[1]
-        
+        if folders is None:
+            full_path = source_path + "\\" + model_name + "\\" + model_name + "\\Model\\postProcessing\\freeSurface\\"
+            folders = next(os.walk(full_path), (None, None, []))[1]
+            
         self.source_path = source_path
         self.model_name = model_name
         self.model_folders = folders[1:]  # ignore first directory (is 0 time)
