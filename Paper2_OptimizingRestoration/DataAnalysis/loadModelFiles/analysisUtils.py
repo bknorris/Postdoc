@@ -4,6 +4,8 @@ Modules to support analyzing OpenFOAM postProcessing output files
 
 BKN - USGS PCMSC 2022
 """
+import os
+import fnmatch
 import pandas as pd
 import numpy as np
 
@@ -105,3 +107,16 @@ def qkhf(w, h):
     
     kh = np.sqrt(kh2)
     return kh
+
+
+def find_files(base, pattern, file_type):
+    '''Return list of files matching pattern in base folder.
+    file_type is either 'files' or 'folders'
+    '''
+    if file_type == 'files':
+        return [n for n in fnmatch.filter(os.listdir(base), pattern) if
+                os.path.isfile(os.path.join(base, n))]
+
+    if file_type == 'folders':
+        return [n for n in fnmatch.filter(os.listdir(base), pattern) if
+                os.path.isdir(os.path.join(base, n))]

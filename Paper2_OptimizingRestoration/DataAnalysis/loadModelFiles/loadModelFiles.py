@@ -46,15 +46,20 @@ class loadModelFiles:
         # Get the model folders from postProcessing
         '''
         Update 4/21/22: Sometimes the folders were zipped recursively,
-        i.e., Scenario_#/Scenario_#/...
+        i.e., Scenario_X/Scenario_X/...
+        
+        Some folders were renamed,
+        e.g., Scenario_X/Scenario_Y/...
+        
         Catch these exceptions.
         '''
         surf_path = source_path + "\\" + model_name + "\\Model\\postProcessing\\freeSurface\\"
         bathy_path = source_path + "\\" + model_name + "\\Model\\postProcessing\\bathySample\\surface\\"
         folders = next(os.walk(surf_path), (None, None, []))[1]
         if folders is None:
-            surf_path = source_path + "\\" + model_name + "\\" + model_name + "\\Model\\postProcessing\\freeSurface\\"
-            bathy_path = source_path + "\\" + model_name + "\\" + model_name + "\\Model\\postProcessing\\bathySample\\surface\\"
+            subfolder = analysisUtils.find_files(source_path + "\\" + model_name + '\\', 'Scenario_*', 'folders')
+            surf_path = source_path + "\\" + model_name + "\\" + subfolder[0] + "\\Model\\postProcessing\\freeSurface\\"
+            bathy_path = source_path + "\\" + model_name + "\\" + subfolder[0] + "\\Model\\postProcessing\\bathySample\\surface\\"
             folders = next(os.walk(surf_path), (None, None, []))[1]
             
         self.surf_path = surf_path
