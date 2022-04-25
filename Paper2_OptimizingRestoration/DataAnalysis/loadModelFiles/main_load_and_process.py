@@ -154,5 +154,5 @@ if save_file:
     file_obj.close()
 
 # Print elapsed time
-executionTime = (time.time() - t1) / 60
-print(f'Data processed in: {executionTime:.2f} minutes')
+executionTime = (time.time() - t1) / (60*60)
+print(f'Data processed in: {executionTime:.2f} hours')
