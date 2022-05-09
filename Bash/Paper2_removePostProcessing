@@ -1,0 +1,95 @@
+#!/bin/bash
+# cd "${0%/*}" || exit                                
+#
+# Purpose: This script adjusts removes extra postProcessing folders in several model files
+# Author:  Benjamin K. Norris (U.S. Geological Survey)
+#---------------------------------------------------------------------------------------
+
+# Initialize current directory
+curdir=$(pwd)
+
+# Define source and destination directories
+# NOTE: destdir must be the root directory for the models!
+csvfile="/mnt/c/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/adjustModelSampling_RESTART6.csv"
+sourcedir="/mnt/e/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/"
+destdir="/mnt/c/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/"
+
+# Check to see if CSV is windows formatted or unix formatted
+if [[ $csvfile == *$'\n' ]]; then
+	echo "Converting CSV to UNIX format..."
+	dos2unix $csvfile
+fi 
+
+# Check to see if a ZipFile folder exists in the source
+if ! test -d "${sourcedir}Reprocessed"; then #check to see if the filename.zip exists in $dest
+	echo "No Reprocessed folder exists in the source directory... creating folder!"
+	mkdir "${sourcedir}Reprocessed"
+fi
+
+# Loop through the model directory and only process folders listed in the CSV
+for files in ${sourcedir}*.zip; do #"$sourcedir/*.zip"  $sourcedir/*/
+	file=$(basename "$files")
+	file=${file%%.*} # Remove file extension
+		# Read the CSV and match the line with the model name 
+			# CSV line headers:
+			# col1 = orgScenarioNumber
+			# col2 = waterDepth
+			# col3 = waveHeight
+			# col4 = wavePeriod
+			# col5 = rampTime
+			# col6 = runTime
+			# col7 = purgeWrite
+			# col8 = waveTheory
+
+	while IFS=, read -r col1 col2 col3 col4 col5 col6 col7 col8;do
+		if [[ "$file" == *"_$col1" ]]; then
+			echo "Processing ${file}"
+			echo $col4
+			# Unzip model file from sourcedir to destdir
+			7z x "$sourcedir$file.zip" "-o${destdir}ModelRuns/Scenarios/$file"
+			cd $destdir"ModelRuns/Scenarios/$file/Model/"
+
+			# Remove reconstructed folders to save disk space
+ 			echo "Removing extra postProcessing folders..."
+ 			cd postProcessing/freeSurface
+ 			if [[ $col4 == '5' ]]; then
+ 				find . -name '[0-9].[0-9]*' -type d -exec rm -rv '{}' \; #matches 0.0 to 9.9
+				find . -name '[1][0-9].[0-9]*' -type d -exec rm -rv '{}' \; #matches 10.0 to 19.9
+ 			fi
+ 			if [[ $col4 == '10' ]]; then
+ 				find . -name '[0-9].[0-9]*' -type d -exec rm -rv '{}' \; #matches 0.0 to 9.9
+				find . -name '[1-3][0-9].[0-9]*' -type d -exec rm -rv '{}' \; #matches 10.0 to 39.9
+ 			fi
+ 			if [[ $col4 == '20' ]]; then
+ 				find . -name '[0-9].[0-9]*' -type d -exec rm -rv '{}' \; #matches 0.0 to 9.9
+				find . -name '[1-7][0-9].[0-9]*' -type d -exec rm -rv '{}' \; #matches 10.0 to 79.9
+ 			fi
+
+ 			cd ../bathySample/surface
+ 			if [[ $col4 == '5' ]]; then
+ 				find . -name '[0-9].[0-9]*' -type d -exec rm -rv '{}' \;
+				find . -name '[1][0-9].[0-9]*' -type d -exec rm -rv '{}' \;
+			fi
+ 			if [[ $col4 == '10' ]]; then
+				find . -name '[0-9].[0-9]*' -type d -exec rm -rv '{}' \;
+				find . -name '[1-3][0-9].[0-9]*' -type d -exec rm -rv '{}' \;
+ 			fi
+ 			if [[ $col4 == '20' ]]; then
+				find . -name '[0-9].[0-9]*' -type d -exec rm -rv '{}' \;
+				find . -name '[1-7][0-9].[0-9]*' -type d -exec rm -rv '{}' \;
+ 			fi
+ 			
+ 			# Zip model file from destdir to sourcedir
+ 			echo "Creating new ZIP file..."
+ 			cd $destdir"ModelRuns/Scenarios/$file"
+ 			7z a -mmt=12 "${sourcedir}Reprocessed/$file.zip" -o"$file" 
+
+ 			# Remove file from destdir
+ 			echo "Removing folder..."
+ 			rm -r "${destdir}ModelRuns/Scenarios/$file"
+
+ 			printf '\n\n'
+ 			cd $curdir
+		fi
+	done < <(tail -n +2 $csvfile)
+done
