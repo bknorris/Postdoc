@@ -21,8 +21,8 @@ import processModels
 from analysisUtils import find_files
 from pathlib import Path
 
-version_no = 'V2'  # file version; appends to model save file
-comment = 'Tw_5_10_20s'  # Output file comment
+version_no = 'V1'  # file version; appends to model save file
+comment = 'Final'  # Output file comment
 
 # Define file paths:
 model_source = Path('e:/BKN-FIELD/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/')
@@ -154,5 +154,5 @@ if save_file:
     file_obj.close()
 
 # Print elapsed time
-executionTime = (time.time() - t1) / (60*60)
+executionTime = (time.time() - t1) / (60 * 60)
 print(f'Data processed in: {executionTime:.2f} hours')
