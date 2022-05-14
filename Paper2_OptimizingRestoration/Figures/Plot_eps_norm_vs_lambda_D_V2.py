@@ -19,7 +19,7 @@ csv_source = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestorati
 model_source = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/postProcessed')
 save_fig_dir = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/Figures')
 csv_file = 'modelPostProcessing_mod1.csv'
-data_file = 'modelPostProcessing_Final_V1.dat'
+data_file = 'modelPostProcessing_D2-32_V2.dat'
 save_figures = False
 
 # Load binary results file
@@ -82,7 +82,7 @@ for i in range(0, len(waves)):
             # print(waveLength)
             x_scaled = spce_unq[k] / 0.4
             x = waveLength / x_scaled
-            y = np.max(data['eps_norm'][scenario[idx]])
+            y = np.max(data['eps_norm'][scenario[idx]][1:])
             
             leg = f'${x_scaled:.1f}D$'
             ax[i].loglog(x, y, color=cmap[j][k],
@@ -92,12 +92,12 @@ for i in range(0, len(waves)):
             
 # Plot Adjustments:
 # Axis scaling
-ax[0].set_xlim(1, 500)
-ax[0].set_ylim(2e-4, 1e-2)
-ax[1].set_xlim(1, 500)
-ax[1].set_ylim(2e-4, 1e-2)
-ax[2].set_xlim(1, 500)
-ax[2].set_ylim(2e-4, 1e-2)
+# ax[0].set_xlim(1, 500)
+# ax[0].set_ylim(3e-3, 5e-2)
+# ax[1].set_xlim(1, 500)
+# ax[1].set_ylim(3e-3, 5e-2)
+# ax[2].set_xlim(1, 500)
+# ax[2].set_ylim(3e-3, 5e-2)
 
 # # Labeling
 ax[1].yaxis.set_ticklabels([])
@@ -141,10 +141,10 @@ SMALL_SIZE = 8
 MEDIUM_SIZE = 10
 LARGE_SIZE = 12
             
-# # Save figure
-# if save_figures:
-#     fname = 'Eps_norm_vs_deltaS_V2.png'
-#     plt.savefig(save_fig_dir / fname, dpi=300, format=None, metadata=None,
-#                 bbox_inches=None, pad_inches=0.1,
-#                 facecolor='auto', edgecolor='auto',
-#                 backend=None)
+# Save figure
+if save_figures:
+    fname = 'Eps_norm_vs_lambdaD_V1.png'
+    plt.savefig(save_fig_dir / fname, dpi=300, format=None, metadata=None,
+                bbox_inches=None, pad_inches=0.1,
+                facecolor='auto', edgecolor='auto',
+                backend=None)

@@ -19,7 +19,7 @@ csv_source = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestorati
 model_source = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/postProcessed')
 save_fig_dir = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/Figures')
 csv_file = 'modelPostProcessing_mod1.csv'
-data_file = 'modelPostProcessing_Final_V1.dat'
+data_file = 'modelPostProcessing_D2-32_V2.dat'
 save_figures = False
 
 # Load binary results file
@@ -89,7 +89,7 @@ for i in range(0, len(waves)):
             
             x_scaled = (spce_unq[k] * 36) / 0.4
             leg = f'${x_scaled:.0f}D$'
-            ax[i][j].semilogy(x[1:] + xs[j], y[1:], color=cmap[j][k],
+            ax[i][j].plot(x[1:] + xs[j], y[1:], color=cmap[j][k],
                               marker=markers[k],
                               markersize=5,
                               label=leg)
@@ -98,7 +98,7 @@ for i in range(0, len(waves)):
 # Axis scaling
 for i in range(0, 3):
     [ax[i][j].set_xlim(0, 1.03) for j in range(0, 3)]
-    [ax[i][j].set_ylim(1e-1, 1.5) for j in range(0, 3)]
+    [ax[i][j].set_ylim(1e-1, 1.1) for j in range(0, 3)]
 
 # Labeling
 ax[0][0].xaxis.set_ticklabels([])
@@ -117,9 +117,9 @@ ax[2][2].yaxis.set_ticklabels([])
 ax[2][0].set_xlabel(r'$x/x_0$')
 ax[2][1].set_xlabel(r'$x/x_0$')
 ax[2][2].set_xlabel(r'$x/x_0$')
-ax[0][0].set_ylabel(r'$\epsilon \left/ (h^{-1} \partial F / \partial x) \right.$')
-ax[1][0].set_ylabel(r'$\epsilon \left/ (h^{-1} \partial F / \partial x) \right.$')
-ax[2][0].set_ylabel(r'$\epsilon \left/ (h^{-1} \partial F / \partial x) \right.$')
+ax[0][0].set_ylabel(r'$F / x \left/ F_0 / x_0\right.$')
+ax[1][0].set_ylabel(r'$F / x \left/ F_0 / x_0\right.$')
+ax[2][0].set_ylabel(r'$F / x \left/ F_0 / x_0\right.$')
 ax[0][1].set_title(r'$H_s = \mathrm{0.05 \ m \ Models}$')
 ax[1][1].set_title(r'$H_s = \mathrm{0.15 \ m \ Models}$')
 ax[2][1].set_title(r'$H_s = \mathrm{0.30 \ m \ Models}$')
@@ -174,7 +174,7 @@ plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
 
 # Save figure
 if save_figures:
-    fname = 'HsNorm_vs_x_Tw_deltaS.png'
+    fname = 'F_vs_x_Tw_D_V1.png'
     plt.savefig(save_fig_dir / fname, dpi=300, format=None, metadata=None,
                 bbox_inches=None, pad_inches=0.1,
                 facecolor='auto', edgecolor='auto',

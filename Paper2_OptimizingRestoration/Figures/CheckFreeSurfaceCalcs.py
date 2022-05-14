@@ -53,6 +53,7 @@ print(f'WG4 = {Hs1/Hs0}')
 print(f'WG5 = {Hs2/Hs0}')
 print(f'WG6 = {Hs3/Hs0}')
 
+axes2.plot(f0, Pxx_eta0)
 axes2.plot(f1, Pxx_eta1)
 axes2.plot(f2, Pxx_eta2)
 axes2.plot(f3, Pxx_eta3)
