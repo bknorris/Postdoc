@@ -39,8 +39,8 @@ class processModels:
                     eps: TKE Dissipation Rate [m^2/s^3]
                     Umag: Magnitude of U [field scale, m/s]
                     k: TKE [m^2/s^2]
-                    xBins: 80 bins along the model x axis
-                    zBins: 20 bins along the model z axis
+                    xBins: constant bin size along the model x axis
+                    zBins: 26 bins along the model z axis
                     
             eps_norm = feddersenDissipation():
                 eps_norm: depth profile of surfzone normalized dissipation
@@ -87,7 +87,7 @@ class processModels:
         self.wavelength = wavelength
         self.steepness = steepness
         self.wave_gauges = wave_gauges
-        self.ff = 170  # fudge factor to adjust velocities between model and field scale
+        self.fs = 0.083  # model sample frequency
         
     def computeWaveEnergy(self):
         print('Performing wave energy calculations...')
@@ -98,8 +98,17 @@ class processModels:
         np.seterr(divide='ignore', invalid='ignore')
         for gauge, data in self.free_surf.iteritems():
             if gauge != 'TimeStep':
-                fs = 1 / 0.083  # sample frequency from models
-                f, Pxx_eta = signal.welch(data, fs, nperseg=round(len(data) / 4, 0))
+                fs = 1 / self.fs  # sample frequency from models
+                data = signal.detrend(data)
+                seg = round(len(data) / 2, 0)
+                noverlap = seg / 2
+                f, Pxx_eta = signal.welch(data, fs,
+                                          window='hanning',
+                                          nperseg=seg,
+                                          nfft=seg,
+                                          detrend=False,
+                                          scaling='spectrum',
+                                          noverlap=noverlap)
                 kh = analysisUtils.qkhf(f, self.h)
                 c = np.sqrt(9.81 * np.tanh(kh) / np.sqrt(kh / self.h))
                 n = (1 / 2) * (1 + ((2 * kh) / (np.sinh(2 * kh))))
@@ -110,7 +119,7 @@ class processModels:
                 
                 # Estimate near-bottom orbital velocity with LWT
                 omegaj.append(2 * np.pi * f[1:cutoff])
-                ubj.append((6 * self.ff * 2 * Pxx_eta[1:cutoff] * 2 * np.pi * f[1:cutoff]) / np.sinh(kh[1:cutoff]))
+                ubj.append((2 * Pxx_eta[1:cutoff] * 2 * np.pi * f[1:cutoff]) / np.sinh(kh[1:cutoff]))
                 
         # Mean wave energy dissipation
         del_x = self.wave_gauges[-1] - self.wave_gauges[0]
@@ -134,10 +143,11 @@ class processModels:
         print('Averaging field data...')
         x = self.fields['x'][0]
         z = self.fields['z'][0]
+        maxBin = round(self.wave_gauges[-1] / 0.0026, 0)
         
         # Bin epsilon along x and z
         eps_avg = np.mean(self.fields['epsilon'])  # Avg. TKE dissipation in time
-        bins = stats.binned_statistic_2d(z, x, eps_avg, 'mean', bins=[20, 80])
+        bins = stats.binned_statistic_2d(z, x, eps_avg, 'mean', bins=[26, int(maxBin)])
         epsg = bins.statistic  # Binned result
         
         # Bin Umag along x and z
@@ -145,12 +155,12 @@ class processModels:
         Uy_avg = np.mean(self.fields['Uy'])
         Uz_avg = np.mean(self.fields['Uz'])
         Umag_avg = np.sqrt(Ux_avg**2 + Uy_avg**2 + Uz_avg**2)
-        bins = stats.binned_statistic_2d(z, x, Umag_avg, 'mean', bins=[20, 80])
-        Umagg = 6 * self.ff * bins.statistic  # Binned result
+        bins = stats.binned_statistic_2d(z, x, Umag_avg, 'mean', bins=[26, int(maxBin)])
+        Umagg = bins.statistic  # Binned result
         
         # Bin k along x and z
         k_avg = np.mean(self.fields['k'])  # Avg. TKE dissipation in time
-        bins = stats.binned_statistic_2d(z, x, k_avg, 'mean', bins=[20, 80])
+        bins = stats.binned_statistic_2d(z, x, k_avg, 'mean', bins=[26, int(maxBin)])
         kg = bins.statistic  # Binned result
         
         # Create data frame and return results
@@ -160,8 +170,8 @@ class processModels:
         avg_fields['k'] = pd.Series(list(kg))
         
         # The x and z bins need some prep... this code reshapes them into (20, 80) arrays.
-        xBins = np.tile(bins.y_edge[:-1].reshape(-1, 80), (20, 1))
-        zBins = np.tile(bins.x_edge[:-1].reshape(-1, 20), (80, 1))
+        xBins = np.tile(bins.y_edge[:-1].reshape(-1, int(maxBin)), (26, 1))
+        zBins = np.tile(bins.x_edge[:-1].reshape(-1, 26), (int(maxBin), 1))
         avg_fields['xBins'] = pd.Series(list(xBins))
         avg_fields['zBins'] = pd.Series(list(zBins))
         
@@ -183,7 +193,7 @@ class processModels:
             eps_norm: profile of normalized dissipation; e.g., eps_norm(z)
         '''
         dFdx = np.trapz(epsj)
-        eps_norm = [np.mean(epsilon[x]) / (self.h**-1 * dFdx) for x in range(len(epsilon))]
+        eps_norm = [np.median(epsilon[x]) / (self.h**-1 * dFdx) for x in range(len(epsilon))]
         
         return eps_norm
     

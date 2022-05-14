@@ -21,14 +21,14 @@ import processModels
 from analysisUtils import find_files
 from pathlib import Path
 
-version_no = 'V1'  # file version; appends to model save file
-comment = 'Final'  # Output file comment
+version_no = 'V3'  # file version; appends to model save file
+comment = 'D2-32'  # Output file comment
 
 # Define file paths:
-model_source = Path('e:/BKN-FIELD/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/')
+model_source = Path('e:/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/')
 model_dest = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/')
 save_data_path = str(model_dest) + "\\postProcessed\\"
-model_info = 'modelPostProcessing.csv'
+model_info = 'modelPostProcessing_TEST3.csv'
 
 # Begin program
 # 1. Load CSV
@@ -59,7 +59,7 @@ for idx, scenario in enumerate(model_info['orgScenarioNumber']):
         model_name = file[0].split('.')[0]  # model folder without extension
         with zipfile.ZipFile(str(model_source / file[0]), 'r') as zip_file:
             zip_file.extractall(str(model_dest / model_name))
-    
+        
         # Run loading functions on model files
         model_load = loadModelFiles.loadModelFiles(str(model_dest), model_name, model_info['wavePeriod'][idx])
         timestep = model_load.createTimestep()
