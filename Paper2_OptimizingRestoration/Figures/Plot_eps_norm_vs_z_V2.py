@@ -10,6 +10,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from scipy import stats
 from pathlib import Path
 
 plt.close('all')
@@ -19,7 +20,7 @@ csv_source = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestorati
 model_source = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/postProcessed')
 save_fig_dir = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/Figures')
 csv_file = 'modelPostProcessing_mod1.csv'
-data_file = 'modelPostProcessing_D2-32_V2.dat'
+data_file = 'modelPostProcessing_D2-32_V3.dat'
 save_figures = False
 
 # Load binary results file
@@ -77,28 +78,33 @@ for i in range(0, len(waves)):
             idx2 = np.where(spacing == spce_unq[k])[0].tolist()
             idx = np.intersect1d(idx1, idx2)[0]
             
-            # x = np.mean(np.stack(data['avg_fields'][scenario[idx]]['eps']), axis=1)
-            # y = data['avg_fields'][scenario[idx]]['zBins'][0] * -36
-            x = data['eps_norm'][scenario[idx]]
-            y = np.linspace(0.028, 0.001, len(x)) * 36
+            eps = np.stack(data['avg_fields'][scenario[idx]]['eps'])
+            dFdx = sum(data['wef'][scenario[idx]]['epsj'][:-2])
+            eps_norm = [np.median(eps[x]) / (1**-1 * dFdx) for x in range(len(eps))]
+            eps_norm[0] = np.min(eps[0]) / (1**-1 * dFdx)
+
+            x = eps_norm
+            y = np.linspace(0.027, 0.001, len(x)) * 36
+            yBins = np.flipud(np.linspace(0.027, 0.001, 18) * 36)
+            xBins = stats.binned_statistic(y, x, 'median', bins=18)
             
             x_scaled = (spce_unq[k] * 36) / 0.4
             leg = f'${x_scaled:.1f}D$'
-            ax[i][j].plot(np.linspace(1e-8, 1e-1, 10), np.ones((10,)) * 0.8, '--', color='k')
-            ax[i][j].semilogx(x, y, color=cmap[j][k],
+            ax[i][j].plot(np.linspace(1e-8, 6e-1, 10), np.ones((10,)) * 0.8, '--', color='k')
+            ax[i][j].semilogx(xBins.statistic, yBins, color=cmap[j][k],
                               marker=markers[k],
                               markersize=5,
                               label=leg)
-
-        
+ 
 # Plot Adjustments:
 # Axis scaling
 for i in range(0, 3):
-    [ax[i][j].set_xlim(5e-8, 5e-2) for j in range(0, 3)]
+    [ax[i][j].set_xlim(5e-7, 5e-1) for j in range(0, 3)]
+    # [ax[i][j].set_xlim(1e-10, 1e-3) for j in range(0, 3)]
     [ax[i][j].set_ylim(0, 1) for j in range(0, 3)]
     [ax[i][j].invert_yaxis() for j in range(0, 3)]
 
-# Labeling
+# # Labeling
 ax[0][0].xaxis.set_ticklabels([])
 ax[0][1].xaxis.set_ticklabels([])
 ax[0][1].yaxis.set_ticklabels([])
@@ -112,9 +118,9 @@ ax[1][2].yaxis.set_ticklabels([])
 ax[2][1].yaxis.set_ticklabels([])
 ax[2][2].yaxis.set_ticklabels([])
 
-ax[2][0].set_xlabel(r'$\epsilon \left/ (h^{-1} \partial F / \partial x) \right.$')
-ax[2][1].set_xlabel(r'$\epsilon \left/ (h^{-1} \partial F / \partial x) \right.$')
-ax[2][2].set_xlabel(r'$\epsilon \left/ (h^{-1} \partial F / \partial x) \right.$')
+ax[2][0].set_xlabel(r'$\overline{\epsilon \left/ (h^{-1} \partial F / \partial x) \right.}$')
+ax[2][1].set_xlabel(r'$\overline{\epsilon \left/ (h^{-1} \partial F / \partial x) \right.}$')
+ax[2][2].set_xlabel(r'$\overline{\epsilon \left/ (h^{-1} \partial F / \partial x) \right.}$')
 ax[0][0].set_ylabel('Depth (m)')
 ax[1][0].set_ylabel('Depth (m)')
 ax[2][0].set_ylabel('Depth (m)')

@@ -1,16 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-Plot F vs x (colored by Hs/deltaS) for Paper2_optimizingRestoration
+Plot Hs/Hs0 vs x (colored by Hs/deltaS) for Paper2_optimizingRestoration
 
 BKN - USGS 2022
 """
 
 import pickle
-import matplotlib
+import os
+import sys
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pathlib import Path
+sys.path.insert(1, 'c:\\Users\\bknorris\\Documents\\Scripts\\Postdoc\\Paper2_OptimizingRestoration\\DataAnalysis\\loadModelFiles\\')
+from analysisUtils import find_files 
+from processModels import processModels
 
 plt.close('all')
 
@@ -19,17 +23,45 @@ csv_source = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestorati
 model_source = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/postProcessed')
 save_fig_dir = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/Figures')
 csv_file = 'modelPostProcessing_mod1.csv'
-data_file = 'modelPostProcessing_D2-32_V3.dat'
-save_figures = False
+version_no = 'V3'
 
-# Load binary results file
-file = open(model_source / data_file, 'rb')
-data = pickle.load(file)
-file.close()
+save_figures = False
 
 # Load CSV
 csv_file = csv_source / csv_file
 model_info = pd.read_csv(csv_file.open())
+
+# Load binary results file
+filenames = next(os.walk(str(model_source)))[2]  # For later, [1] is dirs and [2] is files
+data = dict()  # Initialize Dictionary
+for idx, scenario in enumerate(model_info['orgScenarioNumber']):
+    # Check to see if models have been processed already; unzip if no; load if yes
+    model_files = find_files(model_source, f'Scenario_{scenario}_*_{version_no}*', 'files')
+    
+    file = open(model_source / model_files[0], 'rb')
+    print(f'Reading {model_files[0]}')
+    avg_fields = pickle.load(file)
+    file.close()
+        
+    file = open(model_source / model_files[3], 'rb')
+    print(f'Reading {model_files[3]}')
+    freeSurf = pickle.load(file)
+    file.close()
+    
+    model_pprocess = processModels(model_source, [], freeSurf, model_info, idx)
+    wef, Ab, fer, ubr = model_pprocess.computeWaveEnergy()
+    
+    data[str(scenario)] = wef
+    output_file = f'Scenario_{scenario}_WEF_' + version_no + '.dat'
+    file_obj = open(model_source / output_file, mode='wb')
+    pickle.dump(wef, file_obj)
+    file_obj.close()
+    
+    eps_norm = model_pprocess.feddersenDissipation(avg_fields['eps'], wef['epsj'][:-1])
+    output_file = f'Scenario_{scenario}_EPS-NORM_' + version_no + '.dat'
+    file_obj = open(model_source / output_file, mode='wb')
+    pickle.dump(eps_norm, file_obj)
+    file_obj.close()
 
 # Get data indices from CSV -- filter by waveHeight
 five = np.where(model_info.waveHeight == 0.001388889)[0].tolist()
@@ -79,26 +111,26 @@ for i in range(0, len(waves)):
             idx1 = np.where(wavePeriod == wave_unq[j])[0].tolist()
             idx2 = np.where(spacing == spce_unq[k])[0].tolist()
             idx = np.intersect1d(idx1, idx2)[0]
-            gauges = data['wef'][scenario[idx]].keys()[2:]
-            F = data['wef'][scenario[idx]][gauges][:-1]
-            F = np.trapz(F, axis=0) * 36
-            Fnorm = ([x / F[0] for x in F])
-            
+        
+            wave = data[scenario[idx]].loc['Hs'][2:].tolist()
+            HsNorm = ([x / wave[0] for x in wave])
+        
             x = wave_gauges
-            y = Fnorm
+            y = HsNorm
             
             x_scaled = (spce_unq[k] * 36) / 0.4
             leg = f'${x_scaled:.0f}D$'
             ax[i][j].plot(x[1:] + xs[j], y[1:], color=cmap[j][k],
-                              marker=markers[k],
-                              markersize=5,
-                              label=leg)
+                          marker=markers[k],
+                          markersize=5,
+                          label=leg)
+
 
 # Plot Adjustments:
 # Axis scaling
 for i in range(0, 3):
     [ax[i][j].set_xlim(0, 1.03) for j in range(0, 3)]
-    [ax[i][j].set_ylim(1e-1, 1.1) for j in range(0, 3)]
+    [ax[i][j].set_ylim(0.38, 1.12) for j in range(0, 3)]
 
 # Labeling
 ax[0][0].xaxis.set_ticklabels([])
@@ -117,24 +149,12 @@ ax[2][2].yaxis.set_ticklabels([])
 ax[2][0].set_xlabel(r'$x/x_0$')
 ax[2][1].set_xlabel(r'$x/x_0$')
 ax[2][2].set_xlabel(r'$x/x_0$')
-ax[0][0].set_ylabel(r'$F \left/ F_0 \right.$')
-ax[1][0].set_ylabel(r'$F \left/ F_0 \right.$')
-ax[2][0].set_ylabel(r'$F \left/ F_0 \right.$')
+ax[0][0].set_ylabel(r'$H_s/H_{s_0}$')
+ax[1][0].set_ylabel(r'$H_s/H_{s_0}$')
+ax[2][0].set_ylabel(r'$H_s/H_{s_0}$')
 ax[0][1].set_title(r'$H_s = \mathrm{0.05 \ m \ Models}$')
 ax[1][1].set_title(r'$H_s = \mathrm{0.15 \ m \ Models}$')
 ax[2][1].set_title(r'$H_s = \mathrm{0.30 \ m \ Models}$')
-
-# # # Plot Adjustments
-# # ax[0].set_xlabel(r'$x/x_0 \mathrm{(m)}$')
-# # [ax[i].set_ylabel(r'$H_s/H_{s_0}$') for i in range(0, 3)]
-# # ax[0].set_title(r'$T_w = \mathrm{120 \ s \ Models}$')
-# # ax[1].set_title(r'$T_w = \mathrm{60 \ s \ Models}$')
-# # ax[2].set_title(r'$T_w = \mathrm{30 \ s \ Models}$')
-# # ax[1].xaxis.set_ticklabels([])
-# # ax[2].xaxis.set_ticklabels([])
-# # ax[0].set_ylim(0.3, 1.2)
-# [ax[i].set_ylim(2e-4, 5e-2) for i in range(0, 3)]
-# [ax[i].set_xlim(0.06, 1.06) for i in range(0, 3)]
 
 # Multiple legend titles
 handles, labels = ax[2][0].get_legend_handles_labels()
@@ -174,7 +194,7 @@ plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
 
 # Save figure
 if save_figures:
-    fname = 'F_vs_x_Tw_D_V1.png'
+    fname = 'HsNorm_vs_x_Tw_D_finalV1.png'
     plt.savefig(save_fig_dir / fname, dpi=300, format=None, metadata=None,
                 bbox_inches=None, pad_inches=0.1,
                 facecolor='auto', edgecolor='auto',

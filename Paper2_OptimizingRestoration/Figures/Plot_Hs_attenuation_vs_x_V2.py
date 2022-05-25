@@ -12,14 +12,20 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
+# Plot commands -- run this at the top of plotting routines
 plt.close('all')
+matplotlib.rcParams['mathtext.fontset'] = 'custom'
+matplotlib.rcParams['mathtext.it'] = 'Arial:italic'
+matplotlib.rcParams['mathtext.rm'] = 'Arial'
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
 
 # Define file paths:
 csv_source = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/')
 model_source = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/postProcessed')
 save_fig_dir = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/Figures')
 csv_file = 'modelPostProcessing_mod1.csv'
-data_file = 'modelPostProcessing_Final_V1.dat'
+data_file = 'modelPostProcessing_D2-32_V3.dat'
 save_figures = True
 
 # Load binary results file
@@ -49,9 +55,9 @@ axes6 = f1.add_axes([0.7, 0.47, 0.25, 0.22])
 axes7 = f1.add_axes([0.1, 0.74, 0.25, 0.22])
 axes8 = f1.add_axes([0.4, 0.74, 0.25, 0.22])
 axes9 = f1.add_axes([0.7, 0.74, 0.25, 0.22])
-ax = [[axes7, axes8, axes9],
+ax = [[axes1, axes2, axes3],
       [axes4, axes5, axes6],
-      [axes1, axes2, axes3]]
+      [axes7, axes8, axes9]]
 
 # Colormaps from ColorBrewer
 BuGn = ['#ccece6', '#93ccb1', '#63aa83', '#3c885b', '#1b6539', '#00441b']
@@ -101,22 +107,22 @@ for i in range(0, 3):
     [ax[i][j].set_ylim(0.38, 1.12) for j in range(0, 3)]
 
 # Labeling
-ax[0][0].xaxis.set_ticklabels([])
-ax[0][1].xaxis.set_ticklabels([])
-ax[0][1].yaxis.set_ticklabels([])
-ax[0][2].xaxis.set_ticklabels([])
-ax[0][2].yaxis.set_ticklabels([])
+ax[2][0].xaxis.set_ticklabels([])
+ax[2][1].xaxis.set_ticklabels([])
+ax[2][2].xaxis.set_ticklabels([])
 ax[1][0].xaxis.set_ticklabels([])
 ax[1][1].xaxis.set_ticklabels([])
-ax[1][1].yaxis.set_ticklabels([])
 ax[1][2].xaxis.set_ticklabels([])
-ax[1][2].yaxis.set_ticklabels([])
 ax[2][1].yaxis.set_ticklabels([])
 ax[2][2].yaxis.set_ticklabels([])
+ax[1][1].yaxis.set_ticklabels([])
+ax[1][2].yaxis.set_ticklabels([])
+ax[0][1].yaxis.set_ticklabels([])
+ax[0][2].yaxis.set_ticklabels([])
 
-ax[2][0].set_xlabel(r'$x/x_0$')
-ax[2][1].set_xlabel(r'$x/x_0$')
-ax[2][2].set_xlabel(r'$x/x_0$')
+ax[0][0].set_xlabel(r'$x/x_0$')
+ax[0][1].set_xlabel(r'$x/x_0$')
+ax[0][2].set_xlabel(r'$x/x_0$')
 ax[0][0].set_ylabel(r'$H_s/H_{s_0}$')
 ax[1][0].set_ylabel(r'$H_s/H_{s_0}$')
 ax[2][0].set_ylabel(r'$H_s/H_{s_0}$')
@@ -125,24 +131,24 @@ ax[1][1].set_title(r'$H_s = \mathrm{0.15 \ m \ Models}$')
 ax[2][1].set_title(r'$H_s = \mathrm{0.30 \ m \ Models}$')
 
 # Multiple legend titles
-handles, labels = ax[2][0].get_legend_handles_labels()
-leg1 = ax[2][0].legend(handles, labels, bbox_to_anchor=(1.45, -0.2),
+handles, labels = ax[0][0].get_legend_handles_labels()
+leg1 = ax[0][0].legend(handles, labels, bbox_to_anchor=(1.45, -0.2),
                        frameon=False,
                        title=r'$T_w = \mathrm{30 \ s}$')
 title = leg1.get_title()
 title.set_size(12)
 title.set_weight("bold")
 
-handles, labels = ax[2][1].get_legend_handles_labels()
-leg2 = ax[2][1].legend(handles, labels, bbox_to_anchor=(0.75, -0.2),
+handles, labels = ax[0][1].get_legend_handles_labels()
+leg2 = ax[0][1].legend(handles, labels, bbox_to_anchor=(0.75, -0.2),
                        frameon=False,
                        title=r'$T_w = \mathrm{60 \ s}$')
 title = leg2.get_title()
 title.set_size(12)
 title.set_weight("bold")
 
-handles, labels = ax[2][2].get_legend_handles_labels()
-leg3 = ax[2][2].legend(handles, labels, bbox_to_anchor=(0.08, -0.2),
+handles, labels = ax[0][2].get_legend_handles_labels()
+leg3 = ax[0][2].legend(handles, labels, bbox_to_anchor=(0.08, -0.2),
                        frameon=False,
                        title=r'$T_w = \mathrm{120 \ s}$')
 title = leg3.get_title()
@@ -162,8 +168,8 @@ plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
 
 # Save figure
 if save_figures:
-    fname = 'HsNorm_vs_x_Tw_D_finalV1.png'
-    plt.savefig(save_fig_dir / fname, dpi=300, format=None, metadata=None,
+    fname = 'HsNorm_vs_x_Tw_D_finalV1.pdf'
+    plt.savefig(save_fig_dir / fname, dpi=300, format='pdf', metadata=None,
                 bbox_inches=None, pad_inches=0.1,
                 facecolor='auto', edgecolor='auto',
                 backend=None)

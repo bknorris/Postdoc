@@ -77,9 +77,9 @@ for i in range(0, len(waves)):
             x = waveLength / x_scaled
             
             eps = np.stack(data['avg_fields'][scenario[idx]]['eps'])
-            dFdx = sum(data['wef'][scenario[idx]]['epsj'][:-2])
-            eps_norm = [np.median(eps[f]) / (1**-1 * dFdx) for f in range(len(eps))]
-            eps_norm[0] = np.min(eps[0]) / (1**-1 * dFdx)
+            umag = np.stack(data['avg_fields'][scenario[idx]]['Umag'])
+            eps_norm = [np.median(eps[f]) / (np.median(umag[f]**3)) for f in range(len(eps))]
+            # eps_norm[0] = np.min(eps[0]) / (1**-1 * dFdx)
             
             y = eps_norm
             z = np.linspace(0.027, 0.001, len(y)) * 36
@@ -94,60 +94,60 @@ for i in range(0, len(waves)):
                          mec='k',
                          label=leg)
             
-# Plot Adjustments:
-# Axis scaling
-ax[0].set_xlim(1, 500)
-ax[0].set_ylim(5e-5, 5e-2)
-ax[1].set_xlim(1, 500)
-ax[1].set_ylim(5e-5, 5e-2)
-ax[2].set_xlim(1, 500)
-ax[2].set_ylim(5e-5, 5e-2)
-# Labeling
-ax[1].yaxis.set_ticklabels([])
-ax[2].yaxis.set_ticklabels([])
+# # Plot Adjustments:
+# # Axis scaling
+# ax[0].set_xlim(1, 500)
+# ax[0].set_ylim(5e-5, 5e-2)
+# ax[1].set_xlim(1, 500)
+# ax[1].set_ylim(5e-5, 5e-2)
+# ax[2].set_xlim(1, 500)
+# ax[2].set_ylim(5e-5, 5e-2)
+# # Labeling
+# ax[1].yaxis.set_ticklabels([])
+# ax[2].yaxis.set_ticklabels([])
 
-ax[0].set_ylabel(r'$\langle \overline{\epsilon \left/ (h^{-1} \partial F / \partial x) \right.} \rangle$')
-ax[0].set_xlabel(r'$\lambda \left/ D \right.$')
-ax[1].set_xlabel(r'$\lambda \left/ D \right.$')
-ax[2].set_xlabel(r'$\lambda \left/ D \right.$')
-ax[0].set_title(r'$H_s = \mathrm{0.05 \ m \ Models}$')
-ax[1].set_title(r'$H_s = \mathrm{0.15 \ m \ Models}$')
-ax[2].set_title(r'$H_s = \mathrm{0.30 \ m \ Models}$')
+# ax[0].set_ylabel(r'$\langle \overline{\epsilon \left/ (h^{-1} \partial F / \partial x) \right.} \rangle$')
+# ax[0].set_xlabel(r'$\lambda \left/ D \right.$')
+# ax[1].set_xlabel(r'$\lambda \left/ D \right.$')
+# ax[2].set_xlabel(r'$\lambda \left/ D \right.$')
+# ax[0].set_title(r'$H_s = \mathrm{0.05 \ m \ Models}$')
+# ax[1].set_title(r'$H_s = \mathrm{0.15 \ m \ Models}$')
+# ax[2].set_title(r'$H_s = \mathrm{0.30 \ m \ Models}$')
 
-# Multiple legend titles
-handles, labels = ax[2].get_legend_handles_labels()
-leg1 = ax[0].legend(handles[0:6], labels[0:6], bbox_to_anchor=(1.35, -0.14),
-                       frameon=False,
-                       title=r'$T_w = \mathrm{30 \ s}$')
-title = leg1.get_title()
-title.set_size(12)
-title.set_weight("bold")
+# # Multiple legend titles
+# handles, labels = ax[2].get_legend_handles_labels()
+# leg1 = ax[0].legend(handles[0:6], labels[0:6], bbox_to_anchor=(1.35, -0.14),
+#                        frameon=False,
+#                        title=r'$T_w = \mathrm{30 \ s}$')
+# title = leg1.get_title()
+# title.set_size(12)
+# title.set_weight("bold")
 
-handles, labels = ax[1].get_legend_handles_labels()
-leg2 = ax[1].legend(handles[6:12], labels[6:12], bbox_to_anchor=(0.66, -0.14),
-                       frameon=False,
-                       title=r'$T_w = \mathrm{60 \ s}$')
-title = leg2.get_title()
-title.set_size(12)
-title.set_weight("bold")
+# handles, labels = ax[1].get_legend_handles_labels()
+# leg2 = ax[1].legend(handles[6:12], labels[6:12], bbox_to_anchor=(0.66, -0.14),
+#                        frameon=False,
+#                        title=r'$T_w = \mathrm{60 \ s}$')
+# title = leg2.get_title()
+# title.set_size(12)
+# title.set_weight("bold")
 
-handles, labels = ax[2].get_legend_handles_labels()
-leg3 = ax[2].legend(handles[12:18], labels[12:18], bbox_to_anchor=(0, -0.14),
-                       frameon=False,
-                       title=r'$T_w = \mathrm{120 \ s}$')
-title = leg3.get_title()
-title.set_size(12)
-title.set_weight("bold")
+# handles, labels = ax[2].get_legend_handles_labels()
+# leg3 = ax[2].legend(handles[12:18], labels[12:18], bbox_to_anchor=(0, -0.14),
+#                        frameon=False,
+#                        title=r'$T_w = \mathrm{120 \ s}$')
+# title = leg3.get_title()
+# title.set_size(12)
+# title.set_weight("bold")
 
-# Global font adjustments
-SMALL_SIZE = 8
-MEDIUM_SIZE = 10
-LARGE_SIZE = 12
+# # Global font adjustments
+# SMALL_SIZE = 8
+# MEDIUM_SIZE = 10
+# LARGE_SIZE = 12
             
-# Save figure
-if save_figures:
-    fname = 'Eps_norm_vs_lambdaD_V1.png'
-    plt.savefig(save_fig_dir / fname, dpi=300, format=None, metadata=None,
-                bbox_inches=None, pad_inches=0.1,
-                facecolor='auto', edgecolor='auto',
-                backend=None)
+# # Save figure
+# if save_figures:
+#     fname = 'Eps_norm_vs_lambdaD_V1.png'
+#     plt.savefig(save_fig_dir / fname, dpi=300, format=None, metadata=None,
+#                 bbox_inches=None, pad_inches=0.1,
+#                 facecolor='auto', edgecolor='auto',
+#                 backend=None)
