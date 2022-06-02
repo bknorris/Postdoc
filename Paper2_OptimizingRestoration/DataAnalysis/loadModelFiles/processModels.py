@@ -73,6 +73,7 @@ class processModels:
             x_bnd = (0, 10.4)  # lower/upper
         else:
             x_bnd = (0, 21.6)  # lower/upper
+        # x_bnd = (0, 94)
         wave_gauges = np.linspace(x_bnd[0], x_bnd[1], 10)  # 10 evenly spaced WGs
         
         self.fields = fields
@@ -109,20 +110,20 @@ class processModels:
                                           detrend=False,
                                           scaling='spectrum',
                                           noverlap=noverlap)
-                kh = analysisUtils.qkhf(f, self.h)
-                c = np.sqrt(9.81 * np.tanh(kh) / np.sqrt(kh / self.h))
-                n = (1 / 2) * (1 + ((2 * kh) / (np.sinh(2 * kh))))
-                cg = c * n  # Wave celerity
+                kh = analysisUtils.qkhf(f, 0.028)
                 cutoff = np.argmax(f >= 2)
+                c = np.sqrt(9.81 * np.tanh(kh[1:cutoff])) / np.sqrt(kh[1:cutoff] / 0.028)
+                n = (1 / 2) * (1 + ((2 * kh[1:cutoff]) / (np.sinh(2 * kh[1:cutoff]))))
+                cg = c * n  # Wave celerity
                 Hs_spec.append(4 * np.sqrt(np.sum(Pxx_eta[1:cutoff] * np.mean(np.diff(f)))))
-                F.append(1025 * 9.81 * Pxx_eta[1:cutoff] * cg[1:cutoff])  # Wave energy
+                F.append(1025 * 9.81 * Pxx_eta[1:cutoff] * cg)  # Wave energy
                 
                 # Estimate near-bottom orbital velocity with LWT
                 omegaj.append(2 * np.pi * f[1:cutoff])
                 ubj.append((2 * Pxx_eta[1:cutoff] * 2 * np.pi * f[1:cutoff]) / np.sinh(kh[1:cutoff]))
                 
         # Mean wave energy dissipation
-        del_x = self.wave_gauges[-1] - self.wave_gauges[0]
+        del_x = (self.wave_gauges[-1] - self.wave_gauges[0])
         ubr = np.sqrt(np.sum(ubj[-1])**2)
         omegar = np.sum(omegaj[-1] * (ubj[-1]**2)) / np.sum(ubj[-1]**2)
         Ab = ubr / omegar
@@ -143,7 +144,7 @@ class processModels:
         print('Averaging field data...')
         x = self.fields['x'][0]
         z = self.fields['z'][0]
-        maxBin = round(self.wave_gauges[-1] / 0.0026, 0)
+        maxBin = round(self.wave_gauges[-1] / 0.094, 0)
         
         # Bin epsilon along x and z
         eps_avg = np.mean(self.fields['epsilon'])  # Avg. TKE dissipation in time
@@ -193,7 +194,7 @@ class processModels:
             eps_norm: profile of normalized dissipation; e.g., eps_norm(z)
         '''
         dFdx = np.trapz(epsj)
-        eps_norm = [np.median(epsilon[x]) / (self.h**-1 * dFdx) for x in range(len(epsilon))]
+        eps_norm = [np.median(epsilon[x]) / (float(self.h)**-1 * dFdx) for x in range(len(epsilon))]
         
         return eps_norm
     

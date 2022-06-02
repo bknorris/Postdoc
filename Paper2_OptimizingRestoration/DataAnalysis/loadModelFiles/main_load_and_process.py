@@ -28,7 +28,7 @@ comment = 'D2-32'  # Output file comment
 model_source = Path('e:/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/')
 model_dest = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/')
 save_data_path = str(model_dest) + "\\postProcessed\\"
-model_info = 'modelPostProcessing_TEST3.csv'
+model_info = 'modelPostProcessing_mod1.csv'
 
 # Begin program
 # 1. Load CSV

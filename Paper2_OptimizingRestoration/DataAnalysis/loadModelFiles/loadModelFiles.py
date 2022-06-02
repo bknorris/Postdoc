@@ -29,18 +29,20 @@ class loadModelFiles:
     '''
     
     def __init__(self, source_path, model_name, wave_period):
-        if wave_period == 5:
-            x_bnd = (0, 2.6)  # lower/upper
-            z_bnd = (-0.028, -0.001)  # lower/upper
-        elif wave_period == 10:
-            x_bnd = (0, 5.2)  # lower/upper
-            z_bnd = (-0.028, -0.001)  # lower/upper
-        elif wave_period == 20:
-            x_bnd = (0, 10.4)  # lower/upper
-            z_bnd = (-0.028, -0.001)  # lower/upper
-        else:
-            x_bnd = (0, 21.6)  # lower/upper
-            z_bnd = (-0.028, -0.001)  # lower/upper
+        # if wave_period == 5:
+        #     x_bnd = (0, 2.6)  # lower/upper
+        #     z_bnd = (-0.028, -0.001)  # lower/upper
+        # elif wave_period == 10:
+        #     x_bnd = (0, 5.2)  # lower/upper
+        #     z_bnd = (-0.028, -0.001)  # lower/upper
+        # elif wave_period == 20:
+        #     x_bnd = (0, 10.4)  # lower/upper
+        #     z_bnd = (-0.028, -0.001)  # lower/upper
+        # else:
+        #     x_bnd = (0, 21.6)  # lower/upper
+        #     z_bnd = (-0.028, -0.001)  # lower/upper
+        x_bnd = (0, 94)
+        z_bnd = (-1, -0.001)
         wave_gauges = np.linspace(x_bnd[0], x_bnd[1], 10)  # 10 evenly spaced WGs
         
         # Get the model folders from postProcessing
