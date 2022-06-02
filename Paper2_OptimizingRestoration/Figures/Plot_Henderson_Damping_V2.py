@@ -34,7 +34,7 @@ save_fig_dir = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestora
 csv_file = 'modelPostProcessing_mod1.csv'
 version_no = 'V3'
 
-save_figures = False
+save_figures = True
 
 # Load CSV
 csv_file = csv_source / csv_file
@@ -70,10 +70,15 @@ for idx, scenario in enumerate(model_info['orgScenarioNumber']):
             Pxx_eta = Pxx_eta * Hs
             
             # Estimate near-bottom orbital velocity with LWT
-            # Wiberg & Sherwood, 2008: eq. 5-6
-            Kub = (2 * np.pi * f[1:cutoff]) / np.sinh(kh[1:cutoff])
-            Sub = (abs(Kub)**2) * Pxx_eta[1:cutoff]
-            ub.append(np.sqrt(2 * np.trapz(Sub)) * np.mean(np.diff(f)) * 36)  # convert model > field scale
+            # Lowe et al., 2007; Henderson et al., 2017
+            kh = analysisUtils.qkhf(f, 0.028)
+            cutoff = np.argmax(f >= 2)
+            c = np.sqrt(9.81 * np.tanh(kh[1:cutoff])) / np.sqrt(kh[1:cutoff] / 0.028)
+            n = (1 / 2) * (1 + ((2 * kh[1:cutoff]) / (np.sinh(2 * kh[1:cutoff]))))
+            cg = c * n  # Wave celerity 
+            F = 36 * 1025 * 9.81 * Pxx_eta[1:cutoff] * cg  # Wave energy spectrum
+            urms = np.sqrt(2 * np.trapz(F) * np.mean(np.diff(f[1:cutoff]))) # Lowe eq 10
+            ub.append(((8 / np.pi)**(1/2))*urms) 
     
     if idx == 0:
         cal_dict = dict()
@@ -91,8 +96,8 @@ waves = [five, ten, twenty]
 
 plt.style.use('_mpl-gallery')
 f1 = plt.figure(figsize=(10, 6))
-axes1 = f1.add_axes([0.1, 0.35, 0.28, 0.55])
-axes2 = f1.add_axes([0.4, 0.35, 0.28, 0.55])
+axes1 = f1.add_axes([0.08, 0.35, 0.28, 0.55])
+axes2 = f1.add_axes([0.39, 0.35, 0.28, 0.55])
 axes3 = f1.add_axes([0.7, 0.35, 0.28, 0.55])
 ax = [axes1, axes2, axes3]
 
@@ -129,9 +134,9 @@ for i in range(0, len(waves)):
             ubr = np.max(cal_dict[scenario[idx]])
             
             a = (0.0111 / (spce_unq[k]**2)) / 36
-            kappa = 0.4  # Von Karman's constant
-            Pi = 0.2  # Cole's wake strength
-            # z_not = model_info.znot[idx]
+            # kappa = 0.4  # Von Karman's constant
+            # Pi = 0.2  # Cole's wake strength
+            # z_not = 0.2
             # Cd = (kappa**2) * (np.log(h / z_not) + (Pi - 1))**-2
             # print(f'Cd: {Cd}')
             Cd = model_info.Cd[idx]
@@ -160,8 +165,9 @@ for i in range(0, len(waves)):
 # Plot Adjustments:
 # Axis scaling
 for i in range(0, 3):
-    ax[i].set_xlim(3e-4, 10)
-    ax[i].set_ylim(2e-4, 8e-1)
+    ax[i].set_xlim(1e-4, 10)
+    ax[i].set_ylim(1e-4, 8e-1)
+    ax[i].grid(b=None)
 
 # Labeling
 ax[1].yaxis.set_ticklabels([])
@@ -206,7 +212,7 @@ LARGE_SIZE = 12
             
 # Save figure
 if save_figures:
-    fname = 'Henderson_Damping_V1.pdf'
+    fname = 'Henderson_Damping_V2.pdf'
     plt.savefig(save_fig_dir / fname, dpi=300, format='pdf', metadata=None,
                 bbox_inches=None, pad_inches=0.1,
                 facecolor='auto', edgecolor='auto',

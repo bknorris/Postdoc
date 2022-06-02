@@ -66,11 +66,7 @@ bw_T0 = []
 for i in range(0, len(bw_H0)):
     if bw_eta0[i] <= 0:
         continue
-    if bw_eta0[i] < (L0[i] / 20):
-        c = (np.sqrt(9.81 * bw_eta0[i]))
-    else:
-        c = (np.sqrt((9.81 * L0[i]) / (2 * np.pi)))
-    bw_T0.append(L0[i] / c)
+    bw_T0.append(np.sqrt((2 * np.pi * L0[i]) / 9.81))
     
 # Loop through OpenFOAM models and extract values
 Wf = []
