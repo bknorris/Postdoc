@@ -119,8 +119,10 @@ class processModels:
                 F.append(1025 * 9.81 * Pxx_eta[1:cutoff] * cg)  # Wave energy
                 
                 # Estimate near-bottom orbital velocity with LWT
-                omegaj.append(2 * np.pi * f[1:cutoff])
-                ubj.append((2 * Pxx_eta[1:cutoff] * 2 * np.pi * f[1:cutoff]) / np.sinh(kh[1:cutoff]))
+                omega = 2 * np.pi * f[1:cutoff]
+                aj = np.sqrt(2 * Pxx_eta[1:cutoff] * np.mean(np.diff(f)))
+                omegaj.append(omega)
+                ubj.append((aj * omega) / np.sinh(kh[1:cutoff]))
                 
         # Mean wave energy dissipation
         del_x = (self.wave_gauges[-1] - self.wave_gauges[0])
@@ -198,7 +200,7 @@ class processModels:
         
         return eps_norm
     
-    def hendersonDamping(self, ubr):
+    def hendersonDamping(self):
         '''
         Calculate Henderson dimensionless damping parameter Lambda
         (Henderson et al. 2017)
@@ -215,13 +217,113 @@ class processModels:
         Outputs:
             Lambda_not: Henderson damping parameter
         '''
-        # Estimate the drag coefficient (Lentz et al. 2017)
-        a = self.d / (self.deltaS**2)
-        kappa = 0.4  # Von Karman's constant
-        Pi = 0.2  # Cole's wake strength
-        z_not = self.hc / self.h
-        Cd = kappa**2 * (np.log(self.h / z_not) + (Pi - 1))**-2
-        Lambda_not = (Cd * a * ubr * self.Tp) / (4 * np.pi)
+        print('Computing Henderson dissipation...')
         
-        return Lambda_not
+        def find_thresh(array, value, thresh):
+            low = value - (value * thresh)
+            high = value + (value * thresh)
+            idx = np.where((array >= low) & (array <= high))
+            idx[0].tolist()
+            return idx
+
+        # Define variables, avg Ux data
+        x = self.fields['x'][0]
+        z = self.fields['z'][0]
+        Ux = np.stack(self.fields['Ux'])
+        maxBin = round(self.wave_gauges[-1] / 0.094, 0)
+        
+        Ux_avg = []
+        for i in range(0, len(Ux)):
+            tmp = Ux[i]
+            bins = stats.binned_statistic_2d(z, x, tmp, 'mean', bins=[22, int(maxBin)])
+            Ux_avg.append(bins.statistic)
+        
+        Ux_avg = np.stack(Ux_avg)
+        zBins = np.tile(bins.x_edge[:-1].reshape(-1, 22), (int(maxBin), 1))
+        
+        # Estimate alpha in a profile within hemisphere canopy (bins 1 - 5)
+        alpha = []
+        for i in range(1, 5):
+            fs = 1 / self.fs  # sample frequency from models
+            uu = signal.detrend(36 * np.mean(Ux_avg[:, -1, :], axis=1))
+            seg = round(len(uu) / 2, 0)
+            noverlap = seg / 2
+            f, Puu = signal.welch(uu, fs,
+                                window='hanning',
+                                nperseg=seg,
+                                nfft=seg,
+                                detrend=False,
+                                scaling='spectrum',
+                                noverlap=noverlap)
+            
+            ul = signal.detrend(36 * np.mean(Ux_avg[:, i, :], axis=1))
+            f, Pul = signal.welch(ul, fs,
+                                window='hanning',
+                                nperseg=seg,
+                                nfft=seg,
+                                detrend=False,
+                                scaling='spectrum',
+                                noverlap=noverlap)
+            
+            f, Cul = signal.csd(uu, ul, fs,
+                                window='hanning',
+                                nperseg=seg,
+                                nfft=seg,
+                                detrend=False,
+                                scaling='spectrum',
+                                noverlap=noverlap)
+            
+            f, Clu = signal.csd(ul, uu, fs,
+                                window='hanning',
+                                nperseg=seg,
+                                nfft=seg,
+                                detrend=False,
+                                scaling='spectrum',
+                                noverlap=noverlap)
+            
+            f, msc = signal.coherence(uu, ul, fs,
+                                window='hanning',
+                                nperseg=seg,
+                                nfft=seg,
+                                detrend=False,
+                                noverlap=noverlap)
+            cohere_id = np.where(msc > 0.5)
+            
+            # Eq. 26
+            M = [[sum(Puu[cohere_id].tolist()), sum(np.real(Cul[cohere_id]).tolist())],
+                  [sum(np.real(Clu[cohere_id]).tolist()), sum(Pul[cohere_id].tolist())]]
+            vals, vecs = np.linalg.eig(M)
+            uu_tilde = vecs[np.argmax(abs(vals))][0]
+            ul_tilde = vecs[np.argmax(abs(vals))][1]
+            
+            #Eq. 11
+            Gamma_Tj = Pul / Puu
+            k = analysisUtils.qkhf(f, self.h) / self.h
+            kzl = k * zBins[0][1]
+            kzu = k * zBins[0][-1]
+            zeta = np.cosh(kzl) / np.cosh(kzu)
+            Tj = 6 * (2 * len(f[1:]) + 1) * np.mean(np.diff(f)) / f[1:]
+            
+            # Eq. 27
+            GammaHat_Tj = ul_tilde / uu_tilde
+            alpha_id = np.argmin(abs(Gamma_Tj - GammaHat_Tj)**2)
+            
+            u_mag = 36 * np.sqrt(2 * np.trapz(Pul) * np.mean(np.diff(f))) * ((8 / np.pi)**(1 / 2))
+            ub = 36 * np.sqrt(2 * np.trapz(Puu) * np.mean(np.diff(f))) * ((8 / np.pi)**(1 / 2))
+            
+            # Eq. 13
+            alph = (4 * np.pi * (Gamma_Tj[1:] - zeta[1:])) / (Gamma_Tj[1:] * u_mag * Tj)
+            alpha.append(alph[alpha_id])
+        
+        # Calculate Cd, Lambda_not (Eq. 18), and Chi (Eq. 21)
+        a = self.d / (self.deltaS**2) / 36
+        Cd = [abs(alpha[i]) / a for i in range(0, 4)]
+        Cd = np.mean(Cd)
+        Lambda_not = (Cd * a * ub * (self.Tp * 6)) / (4 * np.pi)
+        Chi = ((((1 + 4 * Lambda_not**2)**0.5) - 1)**(3 / 2)) / ((2**(3 / 2)) * Lambda_not**2)
+        
+        print(f'Cd: {Cd:.2f}')
+        print(f'Lambda_not: {Lambda_not:.2f}')
+        print(f'Chi: {Chi:.2f}\n')
+        return Cd, Lambda_not, Chi
         

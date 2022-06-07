@@ -21,14 +21,14 @@ import processModels
 from analysisUtils import find_files
 from pathlib import Path
 
-version_no = 'V3'  # file version; appends to model save file
+version_no = 'V4'  # file version; appends to model save file
 comment = 'D2-32'  # Output file comment
 
 # Define file paths:
-model_source = Path('e:/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/')
+model_source = Path('e:/Models//Paper2_OptimizingRestoration/ModelRuns/Scenarios/')
 model_dest = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/')
 save_data_path = str(model_dest) + "\\postProcessed\\"
-model_info = 'modelPostProcessing_mod1.csv'
+model_info = 'modelPostProcessing_TEST3.csv'
 
 # Begin program
 # 1. Load CSV
@@ -55,11 +55,15 @@ for idx, scenario in enumerate(model_info['orgScenarioNumber']):
     model_files = find_files(save_data_path, f'Scenario_{scenario}_*_{version_no}*', 'files')
     if not model_files:  # list is empty
         # Unzip model file to model_source
+        t3 = time.time()
         print('Unzipping file from source directory...')
         model_name = file[0].split('.')[0]  # model folder without extension
         with zipfile.ZipFile(str(model_source / file[0]), 'r') as zip_file:
             zip_file.extractall(str(model_dest / model_name))
-        
+        # Print elapsed time
+        executionTime = (time.time() - t3) / 60
+        print(f'File unzipped in: {executionTime:.2f} minutes')
+    
         # Run loading functions on model files
         model_load = loadModelFiles.loadModelFiles(str(model_dest), model_name, model_info['wavePeriod'][idx])
         timestep = model_load.createTimestep()
@@ -71,8 +75,8 @@ for idx, scenario in enumerate(model_info['orgScenarioNumber']):
         wef, Ab, fer, ubr = model_pprocess.computeWaveEnergy()
         avg_fields = model_pprocess.avgFields()
         eps_norm = model_pprocess.feddersenDissipation(avg_fields['eps'], wef['epsj'][:-1])
-        Lambda_not = model_pprocess.hendersonDamping(ubr)
-        calc_values = {'Ab': Ab, 'fer': fer, 'ubr': ubr, 'lambda_not': Lambda_not}
+        Cd, Lambda_not, Chi = model_pprocess.hendersonDamping()
+        calc_values = {'Ab': Ab, 'fer': fer, 'ubr': ubr, 'Cd': Cd, 'lambda_not': Lambda_not, 'Chi': Chi}
         
         # Save out binary files to disk
         model_load.saveData(freeSurf, 'freeSurf', save_data_path, version_no)
