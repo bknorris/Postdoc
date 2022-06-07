@@ -89,7 +89,7 @@ for i in range(0, len(waves)):
             y = eps_med
             z = np.linspace(0.027, 0.001, len(y)) * 36
             yBins = stats.binned_statistic(z, y, 'mean', bins=22)
-            y_mean = np.mean(yBins.statistic[-4:])
+            y_mean = np.mean(yBins.statistic[:-1])
             
             leg = f'${x_scaled:.1f}D$'
             ax[i].loglog(x, y_mean, color=cmap[j][k],
@@ -102,11 +102,12 @@ for i in range(0, len(waves)):
 # Plot Adjustments:
 # Axis scaling
 ax[0].set_xlim(1, 500)
-ax[0].set_ylim(2e-6, 5e-3)
+ax[0].set_ylim(1e-7, 5e-3)
 ax[1].set_xlim(1, 500)
-ax[1].set_ylim(2e-6, 5e-3)
+ax[1].set_ylim(1e-7, 5e-3)
 ax[2].set_xlim(1, 500)
-ax[2].set_ylim(2e-6, 5e-3)
+ax[2].set_ylim(1e-7, 5e-3)
+[ax[i].grid(False) for i in range(0, 3)]
 
 # Labeling
 ax[1].yaxis.set_ticklabels([])
@@ -152,7 +153,7 @@ LARGE_SIZE = 12
             
 # Save figure
 if save_figures:
-    fname = 'Eps_vs_lambdaD_V1.pdf'
+    fname = 'Eps_vs_lambdaD_V2.pdf'
     plt.savefig(save_fig_dir / fname, dpi=300, format='pdf', metadata=None,
                 bbox_inches=None, pad_inches=0.1,
                 facecolor='auto', edgecolor='auto',

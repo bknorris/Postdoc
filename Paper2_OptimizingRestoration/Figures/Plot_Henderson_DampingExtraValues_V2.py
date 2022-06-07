@@ -44,9 +44,9 @@ f1 = plt.figure(figsize=(6, 10))
 axes1 = f1.add_axes([0.1, 0.76, 0.35, 0.2])
 axes2 = f1.add_axes([0.1, 0.53, 0.35, 0.2])
 axes3 = f1.add_axes([0.1, 0.30, 0.35, 0.2])
-axes4 = f1.add_axes([0.58, 0.6, 0.35, 0.2])
-axes5 = f1.add_axes([0.58, 0.37, 0.35, 0.2])
-ax = [axes1, axes2, axes3, axes4, axes5]
+axes4 = f1.add_axes([0.58, 0.65, 0.35, 0.2])
+axes5 = f1.add_axes([0.58, 0.42, 0.35, 0.2])
+ax = [axes3, axes2, axes1, axes5, axes4]
 
 # Colormaps from ColorBrewer
 BuGn = ['#ccece6', '#93ccb1', '#63aa83', '#3c885b', '#1b6539', '#00441b']
@@ -91,62 +91,50 @@ for i in range(0, len(waves)):
                          lw=0,
                          marker=markers[k],
                          markersize=7,
-                         alpha=0.65,
+                         alpha=1,
                          mec='k',
                          label=leg)
 
-
 # Plot Adjustments:
 # Axis scaling
-# for i in range(0, 2):
-#     ax[i].set_xlim(1e-3, 10)
-#     ax[i].set_ylim(2e-4, 8e-1)
+for i in range(0, 5):
+    ax[i].set_xlim(1e-4, 10)
+    ax[i].set_ylim(1e-4, 8e-1)
+    ax[i].grid(visible=None)
 
-# # # Labeling
-# ax[1].yaxis.set_ticklabels([])
-# ax[0].set_ylabel(r'$\chi$')
-# ax[0].set_xlabel(r'$\Lambda_0$')
-# ax[1].set_xlabel(r'$\Lambda_0$')
-# ax[0].set_title(r'$H_s = \mathrm{0.60 \ m \ Calculated}$')
-# ax[1].set_title(r'$H_s = \mathrm{0.90 \ m \ Calculated}$')
+# Labeling
+ax[2].xaxis.set_ticklabels([])
+ax[1].xaxis.set_ticklabels([])
+ax[4].xaxis.set_ticklabels([])
+
+ax[0].set_ylabel(r'$\chi$')
+ax[1].set_ylabel(r'$\chi$')
+ax[2].set_ylabel(r'$\chi$')
+ax[3].set_ylabel(r'$\chi$')
+ax[4].set_ylabel(r'$\chi$')
+
+ax[0].set_xlabel(r'$\Lambda_0$')
+ax[3].set_xlabel(r'$\Lambda_0$')
+ax[2].set_title(r'$H_{s0} = \mathrm{0.05 \ m \ Models}$')
+ax[1].set_title(r'$H_{s0} = \mathrm{0.15 \ m \ Models}$')
+ax[0].set_title(r'$H_{s0} = \mathrm{0.30 \ m \ Models}$')
+ax[4].set_title(r'$H_{s0} = \mathrm{0.60 \ m \ Calculated}$')
+ax[3].set_title(r'$H_{s0} = \mathrm{0.90 \ m \ Calculated}$')
 
 
-# # Multiple legends
-# handles, labels = ax[1].get_legend_handles_labels()
-# leg1 = ax[0].legend(handles[0:6], labels[0:6], bbox_to_anchor=(0.9, -0.13),
-#                     frameon=False,
-#                     title=r'$T_w = \mathrm{120 \ s}$')
-# title = leg1.get_title()
-# title.set_size(12)
-# title.set_weight("bold")
+# Multiple legends
+# THIS IS DONE IN ILLUSTRATOR!
 
-# leg2 = ax[0].legend(handles[6:12], labels[6:12], bbox_to_anchor=(1.2, -0.13),
-#                     frameon=False,
-#                     title=r'$T_w = \mathrm{360 \ s}$')
-# title = leg2.get_title()
-# title.set_size(12)
-# title.set_weight("bold")
-
-# leg3 = ax[0].legend(handles[12:18], labels[12:18], bbox_to_anchor=(1.5, -0.13),
-#                     frameon=False,
-#                     title=r'$T_w = \mathrm{720 \ s}$')
-# title = leg3.get_title()
-# title.set_size(12)
-# title.set_weight("bold")
-
-# ax[0].add_artist(leg1)
-# ax[0].add_artist(leg2)
-
-# # Global font adjustments
-# SMALL_SIZE = 8
-# MEDIUM_SIZE = 10
-# LARGE_SIZE = 12
+# Global font adjustments
+SMALL_SIZE = 8
+MEDIUM_SIZE = 10
+LARGE_SIZE = 12
             
-# # Save figure
-# if save_figures:
-#     fname = 'Henderson_DampingExtraValues_V1.pdf'
-#     plt.savefig(save_fig_dir / fname, dpi=300, format='pdf', metadata=None,
-#                 bbox_inches=None, pad_inches=0.1,
-#                 facecolor='auto', edgecolor='auto',
-#                 backend=None)
+# Save figure
+if save_figures:
+    fname = 'Henderson_DampingExtraValues_V2.pdf'
+    plt.savefig(save_fig_dir / fname, dpi=300, format='pdf', metadata=None,
+                bbox_inches=None, pad_inches=0.1,
+                facecolor='auto', edgecolor='auto',
+                backend=None)
     

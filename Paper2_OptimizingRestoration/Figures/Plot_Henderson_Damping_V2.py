@@ -34,7 +34,7 @@ save_fig_dir = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestora
 csv_file = 'modelPostProcessing_mod1.csv'
 version_no = 'V3'
 
-save_figures = True
+save_figures = False
 
 # Load CSV
 csv_file = csv_source / csv_file
@@ -71,9 +71,7 @@ for idx, scenario in enumerate(model_info['orgScenarioNumber']):
             
             # Estimate near-bottom orbital velocity with LWT
             # Lowe et al., 2007; Henderson et al., 2017
-            kh = analysisUtils.qkhf(f, 0.028)
-            cutoff = np.argmax(f >= 2)
-            c = np.sqrt(9.81 * np.tanh(kh[1:cutoff])) / np.sqrt(kh[1:cutoff] / 0.028)
+            c = np.sqrt(9.81 * np.tanh(kh[1:cutoff])) / np.sqrt(kh[1:cutoff] / (h / 36))
             n = (1 / 2) * (1 + ((2 * kh[1:cutoff]) / (np.sinh(2 * kh[1:cutoff]))))
             cg = c * n  # Wave celerity 
             F = 36 * 1025 * 9.81 * Pxx_eta[1:cutoff] * cg  # Wave energy spectrum
@@ -167,7 +165,7 @@ for i in range(0, len(waves)):
 for i in range(0, 3):
     ax[i].set_xlim(1e-4, 10)
     ax[i].set_ylim(1e-4, 8e-1)
-    ax[i].grid(b=None)
+    ax[i].grid(visible=None)
 
 # Labeling
 ax[1].yaxis.set_ticklabels([])

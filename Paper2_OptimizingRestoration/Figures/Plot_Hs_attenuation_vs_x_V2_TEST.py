@@ -52,16 +52,16 @@ for idx, scenario in enumerate(model_info['orgScenarioNumber']):
     wef, Ab, fer, ubr = model_pprocess.computeWaveEnergy()
     
     data[str(scenario)] = wef
-    output_file = f'Scenario_{scenario}_WEF_' + version_no + '.dat'
-    file_obj = open(model_source / output_file, mode='wb')
-    pickle.dump(wef, file_obj)
-    file_obj.close()
+    # output_file = f'Scenario_{scenario}_WEF_' + version_no + '.dat'
+    # file_obj = open(model_source / output_file, mode='wb')
+    # pickle.dump(wef, file_obj)
+    # file_obj.close()
     
-    eps_norm = model_pprocess.feddersenDissipation(avg_fields['eps'], wef['epsj'][:-1])
-    output_file = f'Scenario_{scenario}_EPS-NORM_' + version_no + '.dat'
-    file_obj = open(model_source / output_file, mode='wb')
-    pickle.dump(eps_norm, file_obj)
-    file_obj.close()
+    # eps_norm = model_pprocess.feddersenDissipation(avg_fields['eps'], wef['epsj'][:-1])
+    # output_file = f'Scenario_{scenario}_EPS-NORM_' + version_no + '.dat'
+    # file_obj = open(model_source / output_file, mode='wb')
+    # pickle.dump(eps_norm, file_obj)
+    # file_obj.close()
 
 # Get data indices from CSV -- filter by waveHeight
 five = np.where(model_info.waveHeight == 0.001388889)[0].tolist()
@@ -113,14 +113,14 @@ for i in range(0, len(waves)):
             idx = np.intersect1d(idx1, idx2)[0]
         
             wave = data[scenario[idx]].loc['Hs'][2:].tolist()
-            HsNorm = ([x / wave[0] for x in wave])
+            HsNorm = ([x / 0.028 for x in wave])
         
             x = wave_gauges
             y = HsNorm
             
             x_scaled = (spce_unq[k] * 36) / 0.4
             leg = f'${x_scaled:.0f}D$'
-            ax[i][j].plot(x[1:] + xs[j], y[1:], color=cmap[j][k],
+            ax[i][j].semilogy(x[1:] + xs[j], y[1:], color=cmap[j][k],
                           marker=markers[k],
                           markersize=5,
                           label=leg)
@@ -130,21 +130,21 @@ for i in range(0, len(waves)):
 # Axis scaling
 for i in range(0, 3):
     [ax[i][j].set_xlim(0, 1.03) for j in range(0, 3)]
-    [ax[i][j].set_ylim(0.38, 1.12) for j in range(0, 3)]
+    [ax[i][j].set_ylim(0.001, 0.08) for j in range(0, 3)]
 
 # Labeling
-ax[0][0].xaxis.set_ticklabels([])
-ax[0][1].xaxis.set_ticklabels([])
-ax[0][1].yaxis.set_ticklabels([])
-ax[0][2].xaxis.set_ticklabels([])
-ax[0][2].yaxis.set_ticklabels([])
-ax[1][0].xaxis.set_ticklabels([])
-ax[1][1].xaxis.set_ticklabels([])
-ax[1][1].yaxis.set_ticklabels([])
-ax[1][2].xaxis.set_ticklabels([])
-ax[1][2].yaxis.set_ticklabels([])
-ax[2][1].yaxis.set_ticklabels([])
-ax[2][2].yaxis.set_ticklabels([])
+# ax[0][0].xaxis.set_ticklabels([])
+# ax[0][1].xaxis.set_ticklabels([])
+# ax[0][1].yaxis.set_ticklabels([])
+# ax[0][2].xaxis.set_ticklabels([])
+# ax[0][2].yaxis.set_ticklabels([])
+# ax[1][0].xaxis.set_ticklabels([])
+# ax[1][1].xaxis.set_ticklabels([])
+# ax[1][1].yaxis.set_ticklabels([])
+# ax[1][2].xaxis.set_ticklabels([])
+# ax[1][2].yaxis.set_ticklabels([])
+# ax[2][1].yaxis.set_ticklabels([])
+# ax[2][2].yaxis.set_ticklabels([])
 
 ax[2][0].set_xlabel(r'$x/x_0$')
 ax[2][1].set_xlabel(r'$x/x_0$')

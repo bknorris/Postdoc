@@ -19,8 +19,8 @@ plt.close('all')
 csv_source = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/')
 model_source = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/ModelRuns/Scenarios/postProcessed')
 save_fig_dir = Path('c:/Users/bknorris/Documents/Models/Paper2_OptimizingRestoration/Figures')
-csv_file = 'modelPostProcessing_TEST3.csv'
-version_no = 'V2'
+csv_file = 'modelPostProcessing_imagesc.csv'
+version_no = 'V3'
 save_figures = False
 
 
@@ -69,7 +69,7 @@ for idx, scenario in enumerate(model_info['orgScenarioNumber']):
 
 [ax[x].xaxis.set_ticklabels([]) for x in range(1,6)]
 
-fname = 'Eps_Tw_30_Hs_0_15.png'
+fname = 'Eps_Tw_30_Hs_0_05.png'
 plt.savefig(save_fig_dir / fname, dpi=300, format=None, metadata=None,
             bbox_inches=None, pad_inches=0.1,
             facecolor='auto', edgecolor='auto',
