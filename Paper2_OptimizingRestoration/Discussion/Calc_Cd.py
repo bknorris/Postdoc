@@ -54,6 +54,7 @@ for idx, scenario in enumerate(model_info['orgScenarioNumber']):
     freeSurf = pickle.load(file)
     file.close()
     ub = []
+    T = []
     for gauge, data in freeSurf.iteritems():
         if gauge != 'TimeStep':
             fs = 1 / 0.083  # sample frequency from models
@@ -77,22 +78,22 @@ for idx, scenario in enumerate(model_info['orgScenarioNumber']):
             c = np.sqrt(9.81 * np.tanh(kh[1:cutoff])) / np.sqrt(kh[1:cutoff] / 0.028)
             n = (1 / 2) * (1 + ((2 * kh[1:cutoff]) / (np.sinh(2 * kh[1:cutoff]))))
             cg = c * n  # Wave celerity 
-            F = 1025 * 9.81 * Pxx_eta[1:cutoff] * cg  # Wave energy spectrum
+            F = 36 * 1025 * 9.81 * Pxx_eta[1:cutoff] * cg  # Wave energy spectrum
             urms = np.sqrt(2 * np.trapz(F) * np.mean(np.diff(f[1:cutoff]))) # Lowe eq 10
             ub.append(((8 / np.pi)**(1/2))*urms) 
+            T.append(1 / f[np.argmax(F)])
     
-    # Compute free surface slope eta/x
-    if model_info.wavePeriod[idx] == 5:
-        S = np.abs(freeSurf['WG1'] - freeSurf['WG10']) / 2.6
-    elif model_info.wavePeriod[idx] == 10:
-        S = np.abs(freeSurf['WG1'] - freeSurf['WG10']) / 5.2
-    else:
-        S = np.abs(freeSurf['WG1'] - freeSurf['WG10']) / 10.4
+    # Calculate u
+    file = open(model_source / model_files[0], 'rb')
+    avg_fields = pickle.load(file)
+    file.close()
+    ub = 36 * np.mean(np.stack(avg_fields['Umag'])[-1, :])
+    u = 36 * np.mean(np.stack(avg_fields['Umag'])[8, :])
     
-    H = (np.mean(freeSurf['WG10']) + 0.027)
+    alpha = (4 * np.pi * (ub - u)) / (6 * np.mean(T) * u * ub)
+    a = (model_info.d[idx] / model_info.deltaS[idx]**2) / 36
+    Cd = alpha / a
     
-    Cd = ((2 * 9.81 * H * np.mean(S)) / (np.mean(ub)**2))
-    a = (model_info.deltaS[idx]  * 36) / 0.4
     ax.plot(a, Cd, '.')
     # print(f'Cd: {Cd}')
     print(f'{Cd}')
